@@ -133,9 +133,10 @@ export function buildCity(layout: CityLayout): CityView {
       text: s.vertical ? s.text.split('').join('\n') : s.text,
       style: {
         fontFamily: '"Courier New", monospace',
-        fontSize: s.vertical ? 16 : 15,
+        fontSize: s.fontSize,
         fill: s.color,
         letterSpacing: s.vertical ? 2 : 3,
+        lineHeight: s.fontSize + 4,
         align: 'center',
       },
     });

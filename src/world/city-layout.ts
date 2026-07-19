@@ -25,6 +25,7 @@ export interface SignSpec {
   text: string;
   color: number;
   vertical: boolean;
+  fontSize: number;
 }
 
 export interface HoloSpec {
@@ -107,7 +108,8 @@ export function computeCityLayout(rng: Rng, width: number, height: number): City
     }
   }
 
-  // Signs on the buildings nearest the street (max 9).
+  // Signs on the buildings nearest the street (max 9). Size and font scale
+  // to fit the host — a sign must never extend past its building.
   const streetSorted = [...buildings]
     .map((b) => ({
       b,
@@ -119,17 +121,39 @@ export function computeCityLayout(rng: Rng, width: number, height: number): City
     const text = rng.pick(SIGN_WORDS);
     const vertical = rng.next() < 0.35;
     const color = rng.pick(NEON_SIGN_COLORS);
-    const w = vertical ? 42 : Math.max(64, text.length * 16 + 20);
-    const h = vertical ? Math.max(80, text.length * 22 + 16) : 34;
-    signs.push({
-      x: b.x + rng.range(0, Math.max(1, b.w - w)),
-      y: b.y + b.h * rng.range(0.15, 0.6),
-      w,
-      h,
-      text,
-      color,
-      vertical,
-    });
+    const availW = b.w - 16;
+    const availH = b.h - 10;
+    if (vertical) {
+      const fontSize = Math.min(20, Math.floor((availH - 16) / text.length - 4));
+      if (fontSize < 10 || availW < fontSize + 12) continue;
+      const w = fontSize + 14;
+      const h = text.length * (fontSize + 4) + 14;
+      signs.push({
+        x: b.x + rng.range(0, b.w - w),
+        y: b.y + 2 + rng.next() * Math.max(0, b.h - h - 6),
+        w,
+        h,
+        text,
+        color,
+        vertical,
+        fontSize,
+      });
+    } else {
+      const fontSize = Math.min(18, Math.floor((availW - 20) / (text.length * 0.64)));
+      if (fontSize < 9) continue;
+      const w = Math.ceil(text.length * fontSize * 0.64) + 20;
+      const h = fontSize + 16;
+      signs.push({
+        x: b.x + rng.range(0, b.w - w),
+        y: b.y + 2 + rng.next() * Math.max(0, b.h - h - 6),
+        w,
+        h,
+        text,
+        color,
+        vertical,
+        fontSize,
+      });
+    }
   }
 
   // Holographic ad panels mast-mounted on rooftops, centered on their host,

@@ -44,6 +44,16 @@ describe('computeCityLayout', () => {
     }
   });
 
+  it('fully contains every sign within some host building', () => {
+    const layout = computeCityLayout(createRng(1337), W, H);
+    for (const s of layout.signs) {
+      const contained = layout.buildings.some(
+        (b) => s.x >= b.x && s.x + s.w <= b.x + b.w && s.y >= b.y && s.y + s.h <= b.y + b.h,
+      );
+      expect(contained).toBe(true);
+    }
+  });
+
   it('produces holos and vents within bounds', () => {
     const layout = computeCityLayout(createRng(1337), W, H);
     expect(layout.holos.length).toBeGreaterThan(0);
