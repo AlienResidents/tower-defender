@@ -124,45 +124,53 @@ export function buildCity(layout: CityLayout): CityView {
 
   // --- neon signs (band lightboxes + blade panels on struts) ---
   layout.signs.forEach((s, i) => {
+    const host = layout.buildings[s.hostIdx];
+    const isBlade = s.style === 'blade';
+
+    const label = new Text({
+      text: isBlade ? s.text.split('').join('\n') : s.text,
+      style: {
+        fontFamily: '"Courier New", monospace',
+        fontSize: s.fontSize,
+        fill: s.color,
+        letterSpacing: isBlade ? 1 : 3,
+        ...(isBlade ? { lineHeight: s.fontSize + 3 } : {}),
+        align: 'center',
+      },
+    });
+    label.anchor.set(0.5);
+
+    // measure the real rendered text — band panels expand to fit the word
+    const pw = isBlade ? s.w : Math.max(s.w, Math.ceil(label.width) + 16);
+    const ph = s.h;
+    const sx = isBlade ? s.x : Math.min(s.x, host.x + host.w - pw);
+    const sy = s.y;
+
     // struts for blade signs — behind the panel
-    if (s.style === 'blade') {
-      const host = layout.buildings[s.hostIdx];
+    if (isBlade) {
       const edgeX = s.side === -1 ? host.x : host.x + host.w;
-      const farX = s.side === -1 ? s.x + s.w : s.x;
+      const farX = s.side === -1 ? sx + pw : sx;
       const struts = new Graphics();
-      struts.moveTo(edgeX, s.y + 3).lineTo(farX, s.y + 3);
-      struts.moveTo(edgeX, s.y + s.h - 3).lineTo(farX, s.y + s.h - 3);
+      struts.moveTo(edgeX, sy + 3).lineTo(farX, sy + 3);
+      struts.moveTo(edgeX, sy + ph - 3).lineTo(farX, sy + ph - 3);
       struts.stroke({ width: 2, color: PALETTE.buildingEdge });
       container.addChild(struts);
     }
 
     const sign = new Container();
-    sign.position.set(s.x, s.y);
+    sign.position.set(sx, sy);
 
     const glow = new Graphics();
-    glow.roundRect(-6, -6, s.w + 12, s.h + 12, 8).fill({ color: s.color, alpha: 0.18 });
+    glow.roundRect(-6, -6, pw + 12, ph + 12, 8).fill({ color: s.color, alpha: 0.18 });
     glow.blendMode = 'add';
 
     const panel = new Graphics();
     panel
-      .roundRect(0, 0, s.w, s.h, 4)
+      .roundRect(0, 0, pw, ph, 4)
       .fill({ color: PALETTE.night, alpha: 0.85 })
       .stroke({ width: 1.5, color: s.color, alpha: 0.9 });
 
-    const label = new Text({
-      text: s.style === 'blade' ? s.text.split('').join('\n') : s.text,
-      style: {
-        fontFamily: '"Courier New", monospace',
-        fontSize: s.fontSize,
-        fill: s.color,
-        letterSpacing: s.style === 'blade' ? 1 : 3,
-        ...(s.style === 'blade' ? { lineHeight: s.fontSize + 3 } : {}),
-        align: 'center',
-      },
-    });
-    label.anchor.set(0.5);
-    label.position.set(s.w / 2, s.h / 2);
-
+    label.position.set(pw / 2, ph / 2);
     sign.addChild(glow, panel, label);
     container.addChild(sign);
     flickers.push({

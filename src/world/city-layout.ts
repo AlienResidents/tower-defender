@@ -162,12 +162,13 @@ export function computeCityLayout(rng: Rng, width: number, height: number): City
     }
 
     // band sign: modest lightbox just under the roofline
+    const perChar = (fs: number): number => text.length * (fs * 0.64 + 3); // glyphs + letterSpacing
     let fontSize = rng.range(11, 16);
-    let w = Math.ceil(text.length * fontSize * 0.64) + 16;
+    let w = Math.ceil(perChar(fontSize)) + 16;
     if (w > b.w * 0.6) {
-      fontSize = Math.floor((b.w * 0.6 - 16) / (text.length * 0.64));
+      fontSize = Math.floor(((b.w * 0.6 - 16) / text.length - 3) / 0.64);
       if (fontSize < 9) continue;
-      w = Math.ceil(text.length * fontSize * 0.64) + 16;
+      w = Math.ceil(perChar(fontSize)) + 16;
     }
     const h = fontSize + 10;
     signs.push({
