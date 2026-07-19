@@ -57,16 +57,29 @@ A neon-drenched sci-fi tower defense game for the browser (Chrome-first). Blade 
 
 **In-level currency: dice.** Polyhedral set d3→d100. Towers and tower upgrades are bought with dice.
 
-- **Roll-to-pay:** commit dice sequentially; each rolls; values sum until ≥ price; all committed dice consumed. **No change given.**
-- **Prices** are multiples of 3, 6, 8, 10 *(deliberate alignment TBC — see §14)*.
-- **Value structure:** low-sided dice = higher total EV + low variance (3d100 avg 151.5 vs 100d3 avg 200); high-sided dice = swingy, high-roll capable. Die-size selection matched to price size *is* the skill.
-- **Dice are scarce and expensive** — deliberate high-tension economy. Starting tray: 2–3 × d100 (the corp's black budget for the shift).
-- Income / sell-refund / draft mechanics: *(pending — §14)*.
+- **Gamble-purchase (manual only, no auto-pay):** you get **3 chances** per purchase (meta upgrades add more). Commit dice per chance; rolls accumulate across chances until the running total ≥ price. On success, **all committed dice are consumed**. On final failure (or abandon), committed dice convert to **salvage** at a fraction (~20%) of their palladium investment — the house edge.
+- **No change given. Prices** are multiples of 3, 6, 8, 10 — texture, not safety: **all dice are a gamble**, no exact-cover breakpoints.
+- **Value structure:** low-sided dice = higher total EV + low variance (3d100 avg 151.5 vs 100d3 avg 200 — verified by simulation, `scripts/roll-simulator.bash`); high-sided = swingy high-rolls. Matching die size to price is the core skill.
+- **Dice are scarce and expensive.** Starting tray: 2–3 × d100 (the corp's black budget for the shift).
+
+**Drops (Diablo-style):** kills drop **item upgrades** (rarity tiers, random affixes) and **palladium**. Item system scope: *(pending — §14)*.
 
 **Meta progression:**
-- **Salvage** — dropped by enemies, kept even on defeat (roguelite standard).
-- **Palladium** — refined from salvage at a steep rate; spent on permanent investments: **dice loadout** (starting tray size/quality — deliberately super expensive) and **technology** (attribute grid).
-- **Attribute grid:** persistent per-tower-archetype upgrades (damage / fire rate / range / crit% / crit dmg / status potency). Exponential cost (~×1.35/rank), soft cap ~20, **free respec**.
+- **Salvage** — consolation from failed gambles (and trash drops); refines to palladium.
+- **Palladium** — the master meta-resource (drops from kills + salvage refinement). Spent on:
+  - **Dice slots** (tray capacity)
+  - **Dice recharges** — ratio table: d100 1:1 (100 Pd), d20 5:1 (100), d12 9:1 (108), d10 12:1 (120), d8 16:1 (128), d6 22:1 (132), d3 45:1 (135). Flat-ish cost with a low-die premium — the EV inversion encoded as price. **Upgrades reduce ratios** (e.g. d3 45:1 → 40:1).
+  - **Extra purchase chances**
+  - **Technology** (attribute grid, §8 below) and **credits** (below)
+- **Attribute grid:** persistent per-tower-archetype (damage / fire rate / range / crit% / crit dmg / status potency). Exponential cost (~×1.35/rank), soft cap ~20, **free respec**.
+
+**Credits & stores (Rifts-inspired structure, original names):** palladium trades into three credit types, each spendable only at its store:
+| Credit | Store archetype | Notes |
+|---|---|---|
+| **CSC — Corporate Standard Credits** | Corporate Depot (official gear) | universal-standard riff |
+| **FOUNDRY Credits** | Foundry Exchange (mil-surp / high-tech) | mercantile riff |
+| **Black Market / GHOST Credits** | The Black Market (exotic, untraceable) | underworld riff |
+*(Names pending sign-off — CS/NGMI are Palladium IP, not usable.)*
 
 ## 9. Combat — Rifts-derived (mechanics homage, original expression) *(pending sign-off)*
 
@@ -96,9 +109,8 @@ Enemies **never attack towers**. One boss per shift ("villain of the week"); bos
 
 ## 14. Open Questions
 
-1. Dice sources in-level: kills drop dice by enemy tier? Wave-clear = draft 1 of 3? Sell-refund in dice (~70% EV)?
-2. Pay UX: full manual die-commit + optional auto-pay assist, or purist manual-only?
-3. Overpay overflow: pure waste (rec: yes for POC) or feeds a "luck meter"?
-4. Price multiples {3,6,8,10}: deliberate that d4/d12/d20/d100 never align, or add 12/20?
-5. Salvage→palladium refine rate (100:1?) and whether palladium also gates tower unlocks or only attributes+dice.
-6. Rendering sign-off (§4). 7. Audio style (§6). 8. Player-as-AI framing (§2). 9. One-shot shifts (§7). 10. Rifts mapping (§9). 11. 12 shifts (§12). 12. Title + difficulty names (§2).
+1. Gamble-purchase: confirm salvage conversion happens only on **final** failure/abandon (committed dice accumulate across the 3 chances, per the 3d3→7 then +d20 example)?
+2. Credit names: CSC / FOUNDRY / GHOST — ok, or alternatives? (CS/NGMI are Palladium proper nouns — not usable.)
+3. Item drops scope: POC = run-scoped simple drops (elite kill → pick 1 of 3), full game = persistent stash + tower item slots?
+4. Palladium→credit exchange: flat rate (Rifts-lore 1:1 simplicity) or per-store premiums (Black Market pricier)?
+5. Pending sign-offs: rendering stack (§4) · Tone.js (§6) · audio style (§6) · player-as-AI framing (§2) · one-shot shifts (§7) · Rifts two-tier damage (§9) · 12 shifts (§12) · title + difficulty names (§2).
