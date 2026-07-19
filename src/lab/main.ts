@@ -18,7 +18,7 @@ import { simulatePurchase } from './sim';
 // ---------------------------------------------------------------- SFX LAB
 
 interface SliderSpec {
-  key: keyof SfxPreset;
+  key: keyof SfxPreset | 'bodyFreq' | 'bodyDecay' | 'bodyGain';
   label: string;
   min: number;
   max: number;
@@ -29,13 +29,41 @@ const SLIDERS: SliderSpec[] = [
   { key: 'freqStart', label: 'freq start', min: 20, max: 4000, step: 10 },
   { key: 'freqEnd', label: 'freq end', min: 10, max: 4000, step: 10 },
   { key: 'sweepTime', label: 'sweep', min: 0.005, max: 0.4, step: 0.005 },
+  { key: 'attack', label: 'attack', min: 0.001, max: 0.15, step: 0.001 },
   { key: 'noise', label: 'noise', min: 0, max: 1, step: 0.05 },
   { key: 'noiseFreq', label: 'noise freq', min: 100, max: 6000, step: 50 },
   { key: 'duration', label: 'duration', min: 0.02, max: 0.6, step: 0.01 },
   { key: 'gain', label: 'gain', min: 0.05, max: 1, step: 0.01 },
   { key: 'hits', label: 'hits', min: 1, max: 14, step: 1 },
   { key: 'hitGap', label: 'hit gap', min: 0.008, max: 0.15, step: 0.002 },
+  { key: 'bodyFreq', label: 'body freq', min: 20, max: 400, step: 2 },
+  { key: 'bodyDecay', label: 'body decay', min: 0.03, max: 1, step: 0.01 },
+  { key: 'bodyGain', label: 'body gain', min: 0, max: 1, step: 0.02 },
 ];
+
+function sliderValue(spec: SliderSpec, preset: SfxPreset): number {
+  if (spec.key === 'bodyFreq') return preset.body?.freq ?? 60;
+  if (spec.key === 'bodyDecay') return preset.body?.decay ?? 0.3;
+  if (spec.key === 'bodyGain') return preset.body?.gain ?? 0;
+  return preset[spec.key] as number;
+}
+
+function applySlider(spec: SliderSpec, v: number, preset: SfxPreset): void {
+  if (spec.key === 'bodyFreq' || spec.key === 'bodyDecay' || spec.key === 'bodyGain') {
+    const body = {
+      osc: preset.body?.osc ?? ('sine' as const),
+      freq: preset.body?.freq ?? 60,
+      decay: preset.body?.decay ?? 0.3,
+      gain: preset.body?.gain ?? 0.3,
+    };
+    if (spec.key === 'bodyFreq') body.freq = v;
+    if (spec.key === 'bodyDecay') body.decay = v;
+    if (spec.key === 'bodyGain') body.gain = v;
+    setOverride(preset.id, { body });
+  } else {
+    setOverride(preset.id, { [spec.key]: v } as Partial<SfxPreset>);
+  }
+}
 
 function ensureAudio(): void {
   void Tone.start();
@@ -97,14 +125,14 @@ function buildWeaponSection(kind: WeaponSoundKind): HTMLElement {
       input.min = String(spec.min);
       input.max = String(spec.max);
       input.step = String(spec.step);
-      input.value = String(preset[spec.key]);
+      input.value = String(sliderValue(spec, preset));
       const val = document.createElement('span');
       val.className = 'val';
-      val.textContent = String(preset[spec.key]);
+      val.textContent = String(sliderValue(spec, preset));
       input.oninput = () => {
         const v = Number(input.value);
         val.textContent = String(v);
-        setOverride(currentId, { [spec.key]: v } as Partial<SfxPreset>);
+        applySlider(spec, v, currentPreset());
       };
       input.onchange = () => {
         ensureAudio();

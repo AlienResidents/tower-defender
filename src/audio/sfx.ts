@@ -21,7 +21,7 @@ function bus(): Tone.ToneAudioNode {
 function playHit(p: SfxPreset, time: number): void {
   const out = bus();
   const env = new Tone.AmplitudeEnvelope({
-    attack: 0.003,
+    attack: p.attack,
     decay: p.duration * 0.7,
     sustain: 0,
     release: p.duration * 0.3,
@@ -50,7 +50,29 @@ function playHit(p: SfxPreset, time: number): void {
 
   env.triggerAttackRelease(p.duration, time);
 
-  const disposeAfter = Math.max(0, time - Tone.now() + p.duration + 0.4) * 1000;
+  // low resonant body under the transient — gives the sound somewhere to go
+  let bodyOsc: Tone.Oscillator | null = null;
+  let bodyGain: Tone.Gain | null = null;
+  let bodyEnv: Tone.AmplitudeEnvelope | null = null;
+  if (p.body && p.body.gain > 0.001) {
+    bodyEnv = new Tone.AmplitudeEnvelope({
+      attack: 0.005,
+      decay: p.body.decay,
+      sustain: 0,
+      release: p.body.decay * 0.3,
+    }).connect(out);
+    bodyOsc = new Tone.Oscillator(p.body.freq, p.body.osc);
+    bodyGain = new Tone.Gain(p.body.gain);
+    bodyOsc.connect(bodyGain);
+    bodyGain.connect(bodyEnv);
+    bodyOsc.start(time).stop(time + p.body.decay + 0.1);
+    bodyEnv.triggerAttackRelease(p.body.decay, time);
+  }
+
+  const disposeAfter = Math.max(
+    0,
+    time - Tone.now() + Math.max(p.duration, p.body?.decay ?? 0) + 0.4,
+  );
   setTimeout(() => {
     osc.dispose();
     oscGain.dispose();
@@ -58,7 +80,10 @@ function playHit(p: SfxPreset, time: number): void {
     noise?.dispose();
     noiseFilter?.dispose();
     noiseGain?.dispose();
-  }, disposeAfter);
+    bodyOsc?.dispose();
+    bodyGain?.dispose();
+    bodyEnv?.dispose();
+  }, disposeAfter * 1000);
 }
 
 export function playPreset(p: SfxPreset): void {

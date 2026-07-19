@@ -15,9 +15,16 @@ describe('SFX preset data', () => {
         expect(p.gain).toBeGreaterThan(0);
         expect(p.gain).toBeLessThanOrEqual(1);
         expect(p.freqStart).toBeGreaterThan(0);
+        expect(p.attack).toBeGreaterThan(0);
         expect(p.duration).toBeGreaterThan(0);
         expect(p.noise).toBeGreaterThanOrEqual(0);
         expect(p.noise).toBeLessThanOrEqual(1);
+        if (p.body) {
+          expect(p.body.freq).toBeGreaterThan(0);
+          expect(p.body.decay).toBeGreaterThan(0);
+          expect(p.body.gain).toBeGreaterThan(0);
+          expect(p.body.gain).toBeLessThanOrEqual(1);
+        }
       }
     }
   });
