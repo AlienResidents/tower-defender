@@ -1,25 +1,26 @@
-import { Application, Container, Text } from 'pixi.js';
+import { Application, Container, Graphics, Text } from 'pixi.js';
 import { armAmbientAudio, pauseMusic, resumeMusic, toggleMute } from './audio/ambient';
 import { Clock } from './core/clock';
 import { createRng } from './core/rng';
 import { PALETTE } from './data/palette';
+import { towerByKey, type TowerDef } from './data/towers';
+import { WAVES } from './data/waves';
 import { PixiRain, type WeatherSystem } from './fx/rain';
 import { SearchlightSystem } from './fx/searchlights';
 import { SmokeSystem } from './fx/smoke';
 import { TrafficSystem } from './fx/traffic';
 import { createWebGpuRain, type WebGpuRain } from './fx/webgpu-rain';
+import { canPlace } from './game/placement';
+import { Run } from './game/run';
+import { RunView } from './game/runView';
+import { BuildBar } from './ui/buildbar';
 import { showTitleCard } from './ui/titlecard';
 import { buildCity } from './world/city';
 import { computeCityLayout, makeSurfaceMap } from './world/city-layout';
-import { GliderSystem } from './world/gliders';
 
 /**
- * M1 beauty spike — neon city, weather, searchlights, traffic, gliders.
- * Look-lock gate: operator sign-off (plan §3).
- *
- * Rain backend: PixiJS-native by default; `?particles=webgpu` attempts the
- * WebGPU compute spike (overlay canvas), falling back ONLY to report —
- * the fallback decision belongs to the operator.
+ * M2 core loop — towers on rooftops, waves on the street, win/lose.
+ * Greybox mechanics inside the look-locked M1 scene.
  */
 
 const SEED = 1337;
@@ -64,7 +65,6 @@ function fitScene(): void {
 const layout = computeCityLayout(rng, DESIGN_W, DESIGN_H);
 const city = buildCity(layout);
 const smoke = new SmokeSystem(rng, layout.vents);
-const gliders = new GliderSystem(rng, layout.path, 6);
 const searchlights = new SearchlightSystem(DESIGN_W, DESIGN_H);
 const traffic = new TrafficSystem(rng, DESIGN_W, DESIGN_H, 6);
 
@@ -94,10 +94,72 @@ if (!webgpuRain) {
 
 scene.addChild(city.container);
 scene.addChild(smoke.container);
-scene.addChild(gliders.container);
 scene.addChild(searchlights.container);
 scene.addChild(traffic.container);
 if (rain) scene.addChild(rain.container);
+
+// --- game: run state + views + build bar ---
+const run = new Run(layout.path);
+const runView = new RunView(run);
+scene.addChild(runView.container);
+const buildBar = new BuildBar(DESIGN_W, DESIGN_H - 44);
+scene.addChild(buildBar.container);
+
+let selected: TowerDef | null = null;
+const ghost = new Graphics();
+ghost.visible = false;
+scene.addChild(ghost);
+let ghostValid = false;
+
+function refreshGhost(x: number, y: number): void {
+  if (!selected) {
+    ghost.visible = false;
+    return;
+  }
+  ghostValid = canPlace(layout, { x, y }, run.towers).ok;
+  const tint = ghostValid ? 0x66ff99 : 0xff4455;
+  ghost.clear();
+  ghost.circle(x, y, 12).stroke({ width: 1.5, color: tint });
+  ghost.circle(x, y, selected.range).stroke({ width: 1, color: tint, alpha: 0.25 });
+  ghost.visible = true;
+}
+
+function statusText(): string {
+  const hint =
+    run.phase === 'build' ? '[enter] start wave' : run.phase === 'wave' ? 'wave in progress' : '';
+  return `LIVES ${run.lives} · WAVE ${run.wave}/${WAVES.length} · ${hint}`;
+}
+
+run.on((e) => {
+  if (e.type !== 'phase') return;
+  if (e.phase === 'won' || e.phase === 'lost') {
+    const endCard = showTitleCard(
+      DESIGN_W,
+      DESIGN_H,
+      e.phase === 'won' ? 'SHIFT 01 :: COMPLETE' : 'SHIFT 01 :: FAILED',
+      e.phase === 'won' ? 'SEE YOU SPACE COWBOY…' : 'DATA-CORE BREACH // PHOSPHOR OFFLINE',
+    );
+    scene.addChild(endCard.container);
+    endCard.show();
+    app.ticker.add((ticker) => endCard.update(ticker.deltaMS / 1000));
+  }
+});
+
+app.stage.eventMode = 'static';
+app.stage.hitArea = app.screen;
+app.stage.on('pointermove', (event) => {
+  const p = scene.toLocal(event.global);
+  refreshGhost(p.x, p.y);
+});
+app.stage.on('pointerdown', (event) => {
+  if (!selected) return;
+  const p = scene.toLocal(event.global);
+  if (canPlace(layout, p, run.towers).ok) {
+    const tower = run.placeTower(selected, p.x, p.y);
+    runView.addTowerView(tower);
+    refreshGhost(p.x, p.y);
+  }
+});
 
 // --- HUD ---
 let audioState: 'off' | 'on' | 'muted' = 'off';
@@ -105,8 +167,8 @@ const hud = new Text({
   text: '',
   style: { fontFamily: '"Courier New", monospace', fontSize: 13, fill: 0x3ec6d8 },
 });
-hud.anchor.set(0, 1);
-hud.position.set(16, DESIGN_H - 12);
+hud.anchor.set(0, 0);
+hud.position.set(16, 12);
 
 function refreshHud(): void {
   const audioLabel =
@@ -147,6 +209,18 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 'm' && audioState !== 'off') {
     audioState = toggleMute() ? 'muted' : 'on';
   }
+  if (event.key === 'Enter') run.startWave();
+  if (event.key === 'Escape') {
+    selected = null;
+    buildBar.setSelected(null);
+    ghost.visible = false;
+  }
+  const towerPick = towerByKey(event.key.toLowerCase());
+  if (towerPick) {
+    selected = selected?.id === towerPick.id ? null : towerPick;
+    buildBar.setSelected(selected?.id ?? null);
+    if (!selected) ghost.visible = false;
+  }
   refreshHud();
 });
 window.addEventListener('pointerdown', () => card.dismiss());
@@ -161,12 +235,14 @@ app.ticker.add((ticker) => {
   clock.advance(rawDt, (dt) => {
     city.update(dt);
     smoke.update(dt);
-    gliders.update(dt);
     searchlights.update(dt);
     traffic.update(dt);
     rain?.update(dt);
     webgpuRain?.update(dt);
     card.update(dt);
+    run.update(dt);
+    runView.sync(dt);
   });
+  buildBar.setStatus(statusText());
   if (clock.paused) card.update(rawDt); // pause screen animates on wall time
 });
