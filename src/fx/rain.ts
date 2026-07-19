@@ -34,11 +34,19 @@ export class PixiRain implements WeatherSystem {
   #width: number;
   #height: number;
   #wind: number;
+  #surfaceYAt: (x: number) => number;
 
-  constructor(rng: Rng, width: number, height: number, count = 700) {
+  constructor(
+    rng: Rng,
+    surfaceYAt: (x: number) => number,
+    width: number,
+    height: number,
+    count = 700,
+  ) {
     this.#width = width;
     this.#height = height;
     this.#wind = -34; // slight slant, wind from the right
+    this.#surfaceYAt = surfaceYAt;
 
     const streakTex = makeStreakTexture();
     for (let i = 0; i < count; i++) {
@@ -67,8 +75,8 @@ export class PixiRain implements WeatherSystem {
     const x = rng.range(-20, this.#width + 20);
     const y = anywhere ? rng.range(-this.#height, this.#height) : rng.range(-80, -10);
     sprite.position.set(x, y);
-    // rain lands across the lower two-thirds of the scene (streets + rooftops)
-    const landY = this.#height * rng.range(0.55, 0.98);
+    // splash on whatever is below — roof, street, or ground
+    const landY = this.#surfaceYAt(x);
     return { sprite, speed: rng.range(650, 950), drift: this.#wind * rng.range(0.8, 1.2), landY };
   }
 
@@ -87,12 +95,12 @@ export class PixiRain implements WeatherSystem {
       s.sprite.x += s.drift * dt;
       if (s.sprite.y >= s.landY) {
         this.#splash(s.sprite.x, s.landY);
-        // respawn at top with fresh lateral position
+        // respawn at top with fresh lateral position and a fresh surface
         s.sprite.position.set(
           ((s.sprite.x % this.#width) + this.#width) % this.#width,
           -20 - (i % 40),
         );
-        s.landY = this.#height * (0.55 + ((i * 37) % 43) / 100);
+        s.landY = this.#surfaceYAt(s.sprite.x);
       }
     }
     for (let i = this.#splashes.length - 1; i >= 0; i--) {

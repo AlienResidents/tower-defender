@@ -10,7 +10,7 @@ import { TrafficSystem } from './fx/traffic';
 import { createWebGpuRain, type WebGpuRain } from './fx/webgpu-rain';
 import { showTitleCard } from './ui/titlecard';
 import { buildCity } from './world/city';
-import { computeCityLayout } from './world/city-layout';
+import { computeCityLayout, makeSurfaceMap } from './world/city-layout';
 import { GliderSystem } from './world/gliders';
 
 /**
@@ -89,7 +89,7 @@ if (params.get('particles') === 'webgpu') {
   }
 }
 if (!webgpuRain) {
-  rain = new PixiRain(rng, DESIGN_W, DESIGN_H, 700);
+  rain = new PixiRain(rng, makeSurfaceMap(layout, DESIGN_H * 0.96), DESIGN_W, DESIGN_H, 700);
 }
 
 scene.addChild(city.container);

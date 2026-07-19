@@ -119,7 +119,7 @@ export function computeCityLayout(rng: Rng, width: number, height: number): City
     const text = rng.pick(SIGN_WORDS);
     const vertical = rng.next() < 0.35;
     const color = rng.pick(NEON_SIGN_COLORS);
-    const w = vertical ? 30 : Math.max(64, text.length * 16 + 20);
+    const w = vertical ? 42 : Math.max(64, text.length * 16 + 20);
     const h = vertical ? Math.max(80, text.length * 22 + 16) : 34;
     signs.push({
       x: b.x + rng.range(0, Math.max(1, b.w - w)),
@@ -132,13 +132,15 @@ export function computeCityLayout(rng: Rng, width: number, height: number): City
     });
   }
 
-  // Holographic ad panels mast-mounted on rooftops, centered on their host.
+  // Holographic ad panels mast-mounted on rooftops, centered on their host,
+  // and never hanging over the street corridor.
   const holos: HoloSpec[] = [];
-  for (const b of streetSorted.slice(0, 3).map((s) => s.b)) {
+  for (const { b } of streetSorted) {
+    if (holos.length >= 3) break;
     const w = rng.range(130, 200);
     const h = rng.range(80, 120);
     const mast = rng.range(18, 34);
-    holos.push({
+    const holo: HoloSpec = {
       x: b.x + b.w * 0.5 - w / 2,
       y: b.y - b.depth - mast - h,
       w,
@@ -146,7 +148,14 @@ export function computeCityLayout(rng: Rng, width: number, height: number): City
       mast,
       mountX: b.x + b.w * 0.5,
       color: rng.pick(NEON_SIGN_COLORS),
-    });
+    };
+    const cx = holo.x + w / 2;
+    const cy = holo.y + h / 2;
+    const halfDiag = Math.hypot(w, h) / 2;
+    if (path.closestPoint({ x: cx, y: cy }).distance < streetWidth * 0.5 + 10 + halfDiag) {
+      continue; // would overlap the road/enemy track — pick another host
+    }
+    holos.push(holo);
   }
 
   // Steam vents near the street edges.
@@ -162,4 +171,23 @@ export function computeCityLayout(rng: Rng, width: number, height: number): City
   }
 
   return { width, height, streetWidth, path, buildings, signs, holos, vents };
+}
+
+/**
+ * Surface map for weather: Y of whatever is under scene-x — rooftop over
+ * buildings, street level over the corridor, ground otherwise. Pure.
+ */
+export function makeSurfaceMap(layout: CityLayout, groundY: number): (x: number) => number {
+  return (x: number): number => {
+    // "over the street" = horizontally within the corridor of the path curve
+    const cp = layout.path.closestPoint({ x, y: groundY });
+    if (Math.abs(cp.x - x) < layout.streetWidth * 0.5) return cp.y;
+    let y = groundY;
+    for (const b of layout.buildings) {
+      if (x >= b.x && x <= b.x + b.w) {
+        y = Math.min(y, b.y - b.depth); // roofline
+      }
+    }
+    return y;
+  };
 }
