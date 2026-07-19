@@ -32,6 +32,10 @@ export interface HoloSpec {
   y: number;
   w: number;
   h: number;
+  /** Emitter mast height connecting panel to the host building's roofline. */
+  mast: number;
+  /** Absolute x of the mast (host building center). */
+  mountX: number;
   color: number;
 }
 
@@ -128,14 +132,19 @@ export function computeCityLayout(rng: Rng, width: number, height: number): City
     });
   }
 
-  // Holographic ad panels floating above rooftops.
+  // Holographic ad panels mast-mounted on rooftops, centered on their host.
   const holos: HoloSpec[] = [];
   for (const b of streetSorted.slice(0, 3).map((s) => s.b)) {
+    const w = rng.range(130, 200);
+    const h = rng.range(80, 120);
+    const mast = rng.range(18, 34);
     holos.push({
-      x: b.x + b.w * 0.5 - 70,
-      y: b.y - b.depth - rng.range(90, 150),
-      w: rng.range(130, 200),
-      h: rng.range(80, 120),
+      x: b.x + b.w * 0.5 - w / 2,
+      y: b.y - b.depth - mast - h,
+      w,
+      h,
+      mast,
+      mountX: b.x + b.w * 0.5,
       color: rng.pick(NEON_SIGN_COLORS),
     });
   }

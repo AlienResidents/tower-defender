@@ -12,9 +12,10 @@ export interface CityView {
 
 interface Flicker {
   node: Container | Graphics | Sprite;
-  rate: number;
-  phase: number;
-  dropSeed: number;
+  mirror?: Graphics;
+  nextEvent: number;
+  burst: number[] | null;
+  burstT: number;
 }
 
 interface Shimmer {
@@ -22,6 +23,27 @@ interface Shimmer {
   panelH: number;
   speed: number;
   offset: number;
+}
+
+interface HoloAnim {
+  root: Container;
+  content: Container;
+  glyph: Graphics;
+  bar: Sprite;
+  panelH: number;
+  speed: number;
+  bobPhase: number;
+  glitchSeed: number;
+  baseY: number;
+}
+
+function hexPoints(cx: number, cy: number, r: number): number[] {
+  const pts: number[] = [];
+  for (let k = 0; k < 6; k++) {
+    const ang = (Math.PI / 3) * k - Math.PI / 6;
+    pts.push(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r);
+  }
+  return pts;
 }
 
 export function buildCity(layout: CityLayout): CityView {
@@ -50,14 +72,15 @@ export function buildCity(layout: CityLayout): CityView {
   street.stroke({ width: 2, color: PALETTE.cyan, alpha: 0.12, cap: 'round', join: 'round' });
   container.addChild(street);
 
-  // --- sign reflections on wet asphalt (under buildings, synced flicker) ---
-  layout.signs.forEach((s, i) => {
+  // --- sign reflections on wet asphalt (under buildings, flicker in sync) ---
+  const refls: Graphics[] = [];
+  layout.signs.forEach((s) => {
     const cp = layout.path.closestPoint({ x: s.x + s.w / 2, y: s.y + s.h / 2 });
     const refl = new Graphics();
     refl.ellipse(cp.x, cp.y, s.w * 0.7, 14).fill({ color: s.color, alpha: 0.1 });
     refl.blendMode = 'add';
     container.addChild(refl);
-    flickers.push({ node: refl, rate: 3 + (i % 5), phase: i * 1.7, dropSeed: i * 13.3 });
+    refls.push(refl);
   });
 
   // --- buildings: oblique extrusion, edges, window grids ---
@@ -121,43 +144,146 @@ export function buildCity(layout: CityLayout): CityView {
 
     sign.addChild(glow, panel, label);
     container.addChild(sign);
-    flickers.push({ node: sign, rate: 3 + (i % 5), phase: i * 1.7, dropSeed: i * 13.3 });
+    flickers.push({
+      node: sign,
+      mirror: refls[i],
+      nextEvent: 1 + Math.random() * 5 + i * 0.4,
+      burst: null,
+      burstT: 0,
+    });
   });
 
-  // --- holographic ads above rooftops ---
+  // --- holographic ads: mast-mounted, framed, glyph content, clipped ---
+  const holoAnims: HoloAnim[] = [];
   layout.holos.forEach((h, i) => {
-    const holo = new Container();
-    holo.position.set(h.x, h.y);
+    const root = new Container();
+    root.position.set(h.x, h.y);
 
+    // emitter mast connecting panel to the roofline
+    const mastX = h.mountX - h.x;
+    const mastG = new Graphics();
+    mastG.rect(mastX - 3, h.h, 6, h.mast).fill(PALETTE.building);
+    mastG.rect(mastX - 3, h.h, 6, h.mast).stroke({ width: 1, color: PALETTE.buildingEdge });
+    mastG.circle(mastX, h.h + 2, 4).fill({ color: h.color, alpha: 0.9 });
+    root.addChild(mastG);
+
+    // panel base (gradient + scanlines texture)
     const panel = new Sprite(makeHoloTexture(h.color));
     panel.width = h.w;
     panel.height = h.h;
-    panel.alpha = 0.55; // translucent — reads as projection, not billboard
+    panel.alpha = 0.55;
     panel.blendMode = 'add';
+    root.addChild(panel);
 
+    // masked content container — nothing escapes the frame
+    const maskG = new Graphics().roundRect(2, 2, h.w - 4, h.h - 4, 3).fill(0xffffff);
+    const content = new Container();
+    content.mask = maskG;
+    root.addChild(maskG, content);
+
+    // rotating glyph ring — the "brand mark"
+    const cx = h.w * 0.5;
+    const cy = h.h * 0.42;
+    const r = Math.min(h.w, h.h) * 0.22;
+    const glyph = new Graphics();
+    glyph.poly(hexPoints(0, 0, r)).stroke({ width: 2.5, color: 0xffffff, alpha: 0.85 });
+    glyph.poly(hexPoints(0, 0, r * 0.55)).stroke({ width: 1.5, color: 0xffffff, alpha: 0.5 });
+    glyph.position.set(cx, cy);
+    glyph.blendMode = 'add';
+    content.addChild(glyph);
+
+    // fake ad-text bars
+    const bars = new Graphics();
+    for (let li = 0; li < 3; li++) {
+      bars
+        .roundRect(h.w * 0.2, h.h * 0.68 + li * 9, h.w * (0.6 - li * 0.14), 4, 2)
+        .fill({ color: 0xffffff, alpha: 0.35 - li * 0.08 });
+    }
+    bars.blendMode = 'add';
+    content.addChild(bars);
+
+    // shimmer sweep (clipped inside the frame now)
     const bar = new Sprite(makeSoftDiscTexture());
     bar.width = h.w * 0.9;
     bar.height = 12;
     bar.alpha = 0.3;
     bar.tint = 0xffffff;
     bar.blendMode = 'add';
+    content.addChild(bar);
 
-    holo.addChild(panel, bar);
-    container.addChild(holo);
-    shimmers.push({ bar, panelH: h.h, speed: 30 + ((i * 17) % 25), offset: i * 2.3 });
-    flickers.push({ node: holo, rate: 1.5 + i, phase: i * 2.1, dropSeed: 9 + i * 7 });
+    // frame + corner brackets
+    const frame = new Graphics();
+    frame.roundRect(0, 0, h.w, h.h, 4).stroke({ width: 1.5, color: h.color, alpha: 0.9 });
+    const cLen = 10;
+    for (const [bx, by, sx, sy] of [
+      [0, 0, 1, 1],
+      [h.w, 0, -1, 1],
+      [0, h.h, 1, -1],
+      [h.w, h.h, -1, -1],
+    ] as const) {
+      frame
+        .moveTo(bx, by + sy * cLen)
+        .lineTo(bx, by)
+        .lineTo(bx + sx * cLen, by);
+    }
+    frame.stroke({ width: 3, color: h.color, alpha: 1 });
+    root.addChild(frame);
+
+    container.addChild(root);
+    holoAnims.push({
+      root,
+      content,
+      glyph,
+      bar,
+      panelH: h.h,
+      speed: 30 + ((i * 17) % 25),
+      bobPhase: i * 2.1,
+      glitchSeed: i * 7.3,
+      baseY: h.y,
+    });
   });
 
   let t = 0;
   function update(dt: number): void {
     t += dt;
     for (const f of flickers) {
-      const base = 0.72 + 0.28 * Math.sin(t * f.rate + f.phase);
-      const drop = Math.sin(t * 0.9 + f.dropSeed) > 0.985 ? 0.25 : 1; // occasional buzz-out
-      f.node.alpha = base * drop;
+      // neon model: mostly ON, occasional fast stutter-burst, snap back
+      if (f.burst) {
+        f.burstT += dt;
+        const step = Math.floor(f.burstT / 0.045); // ~45ms per stutter
+        if (step >= f.burst.length) {
+          f.burst = null;
+          f.node.alpha = 0.95;
+          if (f.mirror) f.mirror.alpha = 0.1;
+          f.nextEvent = 2 + Math.random() * 7;
+        } else {
+          const a = f.burst[step];
+          f.node.alpha = a;
+          if (f.mirror) f.mirror.alpha = 0.02 + 0.08 * a;
+        }
+      } else {
+        f.node.alpha = 0.95;
+        f.nextEvent -= dt;
+        if (f.nextEvent <= 0) {
+          const len = 2 + Math.floor(Math.random() * 4);
+          f.burst = Array.from({ length: len }, () => 0.15 + Math.random() * 0.65);
+          f.burstT = 0;
+        }
+      }
     }
     for (const s of shimmers) {
       s.bar.position.y = ((t * s.speed + s.offset * 40) % (s.panelH + 30)) - 15;
+    }
+    for (const a of holoAnims) {
+      // hover bob + micro-flicker that never vanishes (unlike sign buzz-outs)
+      a.root.y = a.baseY + Math.sin(t * 0.8 + a.bobPhase) * 3;
+      a.root.alpha =
+        0.85 + 0.1 * Math.sin(t * 7.3 + a.bobPhase * 3) * Math.sin(t * 2.1 + a.bobPhase);
+      // rare glitch: brief horizontal content jitter
+      const g = Math.sin(t * 0.9 + a.glitchSeed * 5);
+      a.content.x = g > 0.995 ? (Math.sin(t * 60 + a.glitchSeed) > 0 ? 3 : -3) : 0;
+      a.glyph.rotation = t * 0.4 + a.bobPhase;
+      a.bar.position.y = (t * a.speed) % a.panelH;
     }
   }
 

@@ -2,12 +2,12 @@
 
 export const PALETTE = {
   night: 0x05070f,
-  asphalt: 0x0a0e1a,
-  asphaltSheen: 0x141f38,
-  building: 0x0b1020,
-  buildingTop: 0x101830,
+  asphalt: 0x0d1322,
+  asphaltSheen: 0x18294a,
+  building: 0x111a30,
+  buildingTop: 0x16223e,
   buildingEdge: 0x24406e,
-  windowDark: 0x0e1628,
+  windowDark: 0x142038,
   windowLit: 0x2a3d5c,
   windowWarm: 0x6b4d1f,
 

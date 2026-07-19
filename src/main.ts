@@ -1,5 +1,5 @@
 import { Application, Text } from 'pixi.js';
-import { armAmbientAudio, toggleMute } from './audio/ambient';
+import { armAmbientAudio, pauseMusic, resumeMusic, toggleMute } from './audio/ambient';
 import { Clock } from './core/clock';
 import { createRng } from './core/rng';
 import { PALETTE } from './data/palette';
@@ -104,11 +104,19 @@ const card = showTitleCard(
   'INITIALIZE // PHOSPHOR ONLINE',
 );
 app.stage.addChild(card.container);
-let cardActive = true;
 
 // --- input ---
 window.addEventListener('keydown', (event) => {
-  if (event.key === ' ') clock.togglePause();
+  if (event.key === ' ') {
+    clock.togglePause();
+    if (clock.paused) {
+      card.show();
+      pauseMusic();
+    } else {
+      card.hide();
+      resumeMusic();
+    }
+  }
   if (event.key === '1') clock.setScale(1);
   if (event.key === '2') clock.setScale(2);
   if (event.key === '4') clock.setScale(4);
@@ -117,6 +125,7 @@ window.addEventListener('keydown', (event) => {
   }
   refreshHud();
 });
+window.addEventListener('pointerdown', () => card.dismiss());
 armAmbientAudio(() => {
   audioState = 'on';
   refreshHud();
@@ -124,7 +133,8 @@ armAmbientAudio(() => {
 
 // --- main loop: simulation advances on the fixed clock, not wall time ---
 app.ticker.add((ticker) => {
-  clock.advance(ticker.deltaMS / 1000, (dt) => {
+  const rawDt = ticker.deltaMS / 1000;
+  clock.advance(rawDt, (dt) => {
     city.update(dt);
     smoke.update(dt);
     gliders.update(dt);
@@ -132,6 +142,7 @@ app.ticker.add((ticker) => {
     traffic.update(dt);
     rain?.update(dt);
     webgpuRain?.update(dt);
-    if (cardActive) cardActive = card.update(dt);
+    card.update(dt);
   });
+  if (clock.paused) card.update(rawDt); // pause screen animates on wall time
 });

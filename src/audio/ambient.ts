@@ -34,6 +34,20 @@ export function toggleMute(): boolean {
   return muted;
 }
 
+/** Freeze the generative sequence and duck the bus (game paused). */
+export function pauseMusic(): void {
+  if (!master) return;
+  Tone.Transport.pause();
+  master.gain.rampTo(0.03, 0.2);
+}
+
+/** Resume the sequence and restore the bus (unpaused). */
+export function resumeMusic(): void {
+  if (!master) return;
+  Tone.Transport.start();
+  master.gain.rampTo(muted ? 0 : MASTER_LEVEL, 0.3);
+}
+
 function buildBed(): Tone.Gain {
   const out = new Tone.Gain(MASTER_LEVEL).toDestination();
   buildRain(out);

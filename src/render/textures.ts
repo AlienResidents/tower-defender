@@ -100,6 +100,40 @@ export function makeHoloTexture(color: number): Texture {
 }
 
 /**
+ * Spinner craft silhouette — dart hull with rim lighting, lit canopy,
+ * and an edge light strip. Drawn white so instances can be tinted.
+ */
+export function makeSpinnerTexture(): Texture {
+  return canvasTexture(64, 24, (ctx) => {
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1.5;
+    // dart hull
+    ctx.beginPath();
+    ctx.moveTo(4, 12);
+    ctx.lineTo(22, 5);
+    ctx.lineTo(48, 7);
+    ctx.lineTo(60, 12);
+    ctx.lineTo(48, 17);
+    ctx.lineTo(22, 19);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // lit canopy
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath();
+    ctx.ellipse(38, 11, 6, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // edge light strip
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath();
+    ctx.moveTo(10, 12);
+    ctx.lineTo(54, 12);
+    ctx.stroke();
+  });
+}
+
+/**
  * Scout-walker mech silhouette — hex core, leg strokes, sensor eye.
  * Drawn white so gliders can be tinted per-unit.
  */

@@ -34,17 +34,17 @@ export class SmokeSystem {
     sprite.anchor.set(0.5);
     sprite.tint = PALETTE.smoke;
     sprite.position.set(vent.x + rng.range(-6, 6), vent.y);
-    const size = rng.range(26, 54);
+    const size = rng.range(40, 80);
     sprite.scale.set(size / 128);
     this.container.addChild(sprite);
     this.#puffs.push({
       sprite,
       life: 0,
-      maxLife: rng.range(3.2, 5.5),
-      rise: rng.range(26, 44),
-      drift: rng.range(-14, -4), // same wind as the rain
+      maxLife: rng.range(4.5, 7),
+      rise: rng.range(16, 28),
+      drift: rng.range(-22, -8), // same wind as the rain
       grow: rng.range(0.35, 0.7),
-      baseAlpha: rng.range(0.1, 0.2),
+      baseAlpha: rng.range(0.07, 0.13),
     });
   }
 
