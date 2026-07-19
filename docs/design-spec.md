@@ -1,6 +1,6 @@
 # PHOSPHOR — Design Spec
 
-*Working title, pending trademark pass. Status: DRAFT — interview in progress. Open items in §14.*
+*Working title — trademark pass outstanding (see §14). Status: **APPROVED 2026-07-19** — ready for implementation plan.*
 
 ## 1. Overview
 
@@ -12,8 +12,8 @@ A neon-drenched sci-fi tower defense game for the browser (Chrome-first). Blade 
 
 - You are **PHOSPHOR**, a megacorp's automated defense-grid AI, repelling rival corps' mech raids on your data-cores.
 - Levels are **shifts** (Bebop's "sessions"). Title cards render as system logs (`SHIFT 03 :: INITIALIZE`).
-- Difficulty tiers: **STANDBY → PATROL → REDLINE → MIDNIGHT DIRECTIVE** *(name pending — "Midnight Protocol" is an existing 2021 game; see research doc)*.
-- Title candidates: **PHOSPHOR** (Steam slot open; moderate itch.io collisions + dormant "Phosphor Games" studio → use subtitle + trademark search). Subtitle candidates: *Graveyard Shift*, *Afterlight*.
+- Difficulty tiers: **STANDBY → PATROL → REDLINE → MIDNIGHT DIRECTIVE** ("Midnight Protocol" avoided — existing 2021 game; see research doc).
+- Title: **PHOSPHOR** (confirmed). Subtitle (working): **Graveyard Shift**. Steam slot open; trademark search still required before public use.
 
 ## 3. Influences (confirmed)
 
@@ -21,7 +21,7 @@ A neon-drenched sci-fi tower defense game for the browser (Chrome-first). Blade 
 - **Cowboy Bebop:** title-card typography, session-structured levels, space-western loneliness.
 - **Rifts (Palladium):** combat mechanics inspiration — see §9. Mechanics homage only; zero Palladium names, lore, or art.
 
-## 4. Technical Direction *(pending sign-off)*
+## 4. Technical Direction
 
 - **POC:** TypeScript + **PixiJS v8 on WebGL2**. Neon via filter pipeline (glow/blur/custom GLSL, additive blending); thousands of batched sprites.
 - **Parallel spike (≤1 person-week):** raw **WebGPU compute-shader particles** (rain, volumetric smoke, searchlight cones) rendered to a texture composited into the PixiJS scene.
@@ -38,7 +38,7 @@ A neon-drenched sci-fi tower defense game for the browser (Chrome-first). Blade 
 ## 6. Audio
 
 - **Engine:** Tone.js (MIT) + small hand-rolled pattern engine (cycles, `cat`/`stack`/`seq`, polymeters — few hundred lines). Strudel rejected: AGPL v3, no commercial path, `unsafe-eval` CSP friction.
-- **Style:** *(pending: moody synth-ambient vs jazz)*
+- **Style:** moody **synth-ambient**, generative via Tone.js patterns. **Boss encounters shift the mix bass-heavy** — music reacts to game state.
 - SFX: synthesized via Web Audio.
 
 ## 7. Core Systems
@@ -48,7 +48,7 @@ A neon-drenched sci-fi tower defense game for the browser (Chrome-first). Blade 
 | Pathing | POC: fixed paths. Full game: hybrid (some open-field mazing maps) |
 | Time controls | Tactical pause (issue orders while frozen); 1x / 2x / 4x |
 | Difficulty | 4 tiers × per-wave scaling curve. Tier names per §2 |
-| Saves | One-shot shifts — death = restart shift. Meta progression persists. *(pending final confirm)* |
+| Saves | One-shot shifts — death = restart shift. Meta progression persists. |
 | Lives | **Data-cores** — leaked enemies destroy cores scaled by size; a boss leak takes most/all |
 | Build phase | Build anytime; tactical pause covers planning |
 | Meta | Roguelite: post-shift **choice of 1 of N** unlocks (tower / attribute branch / enemy intel) |
@@ -62,7 +62,7 @@ A neon-drenched sci-fi tower defense game for the browser (Chrome-first). Blade 
 - **Value structure:** low-sided dice = higher total EV + low variance (3d100 avg 151.5 vs 100d3 avg 200 — verified by simulation, `scripts/roll-simulator.bash`); high-sided = swingy high-rolls. Matching die size to price is the core skill.
 - **Dice are scarce and expensive.** Starting tray: 2–3 × d100 (the corp's black budget for the shift).
 
-**Drops (Diablo-style):** kills drop **item upgrades** (rarity tiers, random affixes) and **palladium**. Item system scope: *(pending — §14)*.
+**Drops (Diablo-style):** kills drop **item upgrades** (rarity tiers, random affixes) and **palladium**. POC scope: run-scoped drops (elite kill → pick 1 of 3); full game: persistent stash + tower item slots.
 
 **Meta progression:**
 - **Salvage** — consolation from failed gambles (and trash drops); refines to palladium.
@@ -79,9 +79,9 @@ A neon-drenched sci-fi tower defense game for the browser (Chrome-first). Blade 
 | **CSC — Corporate Standard Credits** | Corporate Depot (official gear) | universal-standard riff |
 | **FOUNDRY Credits** | Foundry Exchange (mil-surp / high-tech) | mercantile riff |
 | **Black Market / GHOST Credits** | The Black Market (exotic, untraceable) | underworld riff |
-*(Names pending sign-off — CS/NGMI are Palladium IP, not usable.)*
+*(Confirmed names — CS/NGMI are Palladium IP, not usable.)* Exchange: **flat rate** palladium→credits.
 
-## 9. Combat — Rifts-derived (mechanics homage, original expression) *(pending sign-off)*
+## 9. Combat — Rifts-derived (mechanics homage, original expression)
 
 - **Two-tier damage:** *street-class* vs *mega-class* (Rifts SDC/MDC). Street weapons do ~1% to mega plating — cheap towers handle trash waves; mega weapons (rail guns, particle beams) gate heavy mechs.
 - **Damage types:** kinetic / energy / explosive vs hull / shields / armor — light, readable, no hidden math.
@@ -99,7 +99,7 @@ Enemies **never attack towers**. One boss per shift ("villain of the week"); bos
 
 ## 12. Campaign Structure
 
-- POC: 1 shift, ~15 waves, 4–6 towers, 4–6 enemy types — vertical slice proving the *look*.
+- POC: 1 shift, ~15 waves, 4–6 towers, 4–6 enemy types, run-scoped item drops — vertical slice proving the *look*.
 - Full game: **12 shifts** (launch), boss each, escalating biomes.
 - Map-unique mechanics (all confirmed): rain density cuts tower range / searchlight zones reveal cloaked / hackable neon signs = buff nodes / elevated skyway lanes.
 
@@ -107,10 +107,10 @@ Enemies **never attack towers**. One boss per shift ("villain of the week"); bos
 
 - **Git: source + docs only.** Assets (fonts, concept refs, audio exports) live in **Google Drive**, synced into gitignored `assets/` via script. Never committed.
 
-## 14. Open Questions
+## 14. Spec Complete — Outstanding Action Items
 
-1. Gamble-purchase: confirm salvage conversion happens only on **final** failure/abandon (committed dice accumulate across the 3 chances, per the 3d3→7 then +d20 example)?
-2. Credit names: CSC / FOUNDRY / GHOST — ok, or alternatives? (CS/NGMI are Palladium proper nouns — not usable.)
-3. Item drops scope: POC = run-scoped simple drops (elite kill → pick 1 of 3), full game = persistent stash + tower item slots?
-4. Palladium→credit exchange: flat rate (Rifts-lore 1:1 simplicity) or per-store premiums (Black Market pricier)?
-5. Pending sign-offs: rendering stack (§4) · Tone.js (§6) · audio style (§6) · player-as-AI framing (§2) · one-shot shifts (§7) · Rifts two-tier damage (§9) · 12 shifts (§12) · title + difficulty names (§2).
+All interview questions resolved 2026-07-19. Carried into the plan phase:
+
+1. **Trademark search** on "Phosphor" (USPTO/EUIPO) before any public use; subtitle *Graveyard Shift* is the working differentiator.
+2. **Balance numbers** — starting tray, prices, drop rates, refine rates, ratio-upgrade curve: TBD in plan/balancing passes.
+3. **POC scope lock:** 1 shift / ~15 waves / 4–6 towers / 4–6 enemy types / run-scoped item drops / tactical pause + 1x-2x-4x / data-core lives / meta persistence shell. Credit stores & persistent stash are full-game systems.
