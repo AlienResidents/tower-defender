@@ -9,7 +9,7 @@ Covers the design spec, implementation plan, asset pipeline, and POC architectur
 * [Design Spec](../docs/design-spec.md) — PHOSPHOR: vision, systems, dice economy, Rifts-derived combat (DRAFT)
 
 ### Planning
-* [Implementation Plan](../docs/implementation-plan.md) — *(pending spec approval)*
+* [Implementation Plan](../docs/implementation-plan.md) — POC milestones M0–M4, architecture, risks (APPROVED)
 
 ### Research
 * [Rendering / Audio / Naming](../docs/research/2026-07-19-rendering-audio-naming.md) — PixiJS-WebGL2 + WebGPU particles, Strudel-AGPL rejection, name collisions
