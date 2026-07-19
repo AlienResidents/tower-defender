@@ -4,11 +4,15 @@ import type { TowerDef } from '../data/towers';
 import { WAVES } from '../data/waves';
 import type { Path } from '../world/path';
 import { applyDamage } from './combat';
+import { dropMultiplier } from './economy';
 import { WaveSpawner } from './spawner';
 
 /**
  * Run — the complete game state of one shift. Pure logic, zero rendering:
  * views subscribe via Run.on() and draw from state (plan §5).
+ *
+ * Waves can run concurrently (send early); kills credit palladium scaled by
+ * the pressure multiplier — more simultaneous waves, bigger drops.
  */
 
 export type Phase = 'build' | 'wave' | 'won' | 'lost';
@@ -16,6 +20,7 @@ export type Phase = 'build' | 'wave' | 'won' | 'lost';
 export interface EnemyState {
   uid: number;
   def: EnemyDef;
+  wave: number;
   dist: number;
   hp: number;
   maxHp: number;
@@ -50,20 +55,27 @@ export type RunEvent =
   | { type: 'leak'; enemy: EnemyState }
   | { type: 'fire'; tower: TowerState; target: EnemyState }
   | { type: 'splash'; x: number; y: number; radius: number }
+  | { type: 'drop'; enemy: EnemyState; amount: number; mult: number }
   | { type: 'phase'; phase: Phase; wave: number };
 
 const STARTING_LIVES = 20;
+
+interface ActiveSpawner {
+  spawner: WaveSpawner;
+  waveNo: number;
+}
 
 export class Run {
   phase: Phase = 'build';
   wave = 0;
   lives = STARTING_LIVES;
+  palladium = 0;
   readonly enemies: EnemyState[] = [];
   readonly towers: TowerState[] = [];
   readonly projectiles: ProjectileState[] = [];
 
   #path: Path;
-  #spawner: WaveSpawner | null = null;
+  #spawners: ActiveSpawner[] = [];
   #uid = 1;
   #listeners: ((e: RunEvent) => void)[] = [];
 
@@ -77,6 +89,18 @@ export class Run {
 
   #emit(e: RunEvent): void {
     for (const fn of this.#listeners) fn(e);
+  }
+
+  /** Number of waves currently in progress (spawning or with live units). */
+  activeWaveCount(): number {
+    const active = new Set<number>();
+    for (const s of this.#spawners) active.add(s.waveNo);
+    for (const e of this.enemies) if (e.alive) active.add(e.wave);
+    return active.size;
+  }
+
+  currentMult(): number {
+    return dropMultiplier(this.activeWaveCount());
   }
 
   placeTower(def: TowerDef, x: number, y: number): TowerState {
@@ -93,12 +117,15 @@ export class Run {
     return tower;
   }
 
+  /** Start the next wave. Works mid-wave (send early) — waves stack. */
   startWave(): void {
-    if (this.phase !== 'build') return;
+    if (this.phase === 'won' || this.phase === 'lost' || this.wave >= WAVES.length) return;
     this.wave++;
-    this.#spawner = new WaveSpawner(WAVES[this.wave - 1]);
-    this.phase = 'wave';
-    this.#emit({ type: 'phase', phase: this.phase, wave: this.wave });
+    this.#spawners.push({ spawner: new WaveSpawner(WAVES[this.wave - 1]), waveNo: this.wave });
+    if (this.phase === 'build') {
+      this.phase = 'wave';
+      this.#emit({ type: 'phase', phase: this.phase, wave: this.wave });
+    }
   }
 
   #setPhase(phase: Phase): void {
@@ -106,12 +133,13 @@ export class Run {
     this.#emit({ type: 'phase', phase, wave: this.wave });
   }
 
-  #spawn(enemyId: string): void {
+  #spawn(enemyId: string, waveNo: number): void {
     const def = enemyById(enemyId);
     const p = this.#path.pointAt(0);
     const enemy: EnemyState = {
       uid: this.#uid++,
       def,
+      wave: waveNo,
       dist: 0,
       hp: def.hp,
       maxHp: def.hp,
@@ -128,6 +156,10 @@ export class Run {
     enemy.hp -= applyDamage(source.tier, enemy.def.tier, source.damage * mult);
     if (enemy.hp <= 0) {
       enemy.alive = false;
+      const dropMult = this.currentMult();
+      const amount = enemy.def.drop * dropMult;
+      this.palladium += amount;
+      this.#emit({ type: 'drop', enemy, amount, mult: dropMult });
       this.#emit({ type: 'death', enemy });
     }
   }
@@ -165,7 +197,6 @@ export class Run {
       case 'chain': {
         this.#hit(def, target);
         this.#emit({ type: 'fire', tower, target });
-        // bounce to the two nearest others within aux range
         const others = this.enemies
           .filter((e) => e.alive && e.uid !== target.uid)
           .map((e) => ({ e, d: Math.hypot(e.x - target.x, e.y - target.y) }))
@@ -214,7 +245,6 @@ export class Run {
       const dist = Math.hypot(dx, dy);
       const step = p.speed * dt;
       if (!target || dist <= step) {
-        // impact (or fizzle where the target died)
         p.alive = false;
         const cx = target ? target.x : p.x;
         const cy = target ? target.y : p.y;
@@ -229,7 +259,6 @@ export class Run {
         p.y += (dy / dist) * step;
       }
     }
-    // compact occasionally
     if (this.projectiles.length > 64) {
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
         if (!this.projectiles[i].alive) this.projectiles.splice(i, 1);
@@ -239,7 +268,10 @@ export class Run {
 
   update(dt: number): void {
     if (this.phase !== 'wave') return;
-    this.#spawner?.update(dt, (id) => this.#spawn(id));
+    for (const s of this.#spawners) {
+      s.spawner.update(dt, (id) => this.#spawn(id, s.waveNo));
+    }
+    this.#spawners = this.#spawners.filter((s) => !s.spawner.done);
 
     for (const e of this.enemies) {
       if (!e.alive) continue;
@@ -262,7 +294,7 @@ export class Run {
     for (const t of this.towers) this.#updateTower(t, dt);
     this.#updateProjectiles(dt);
 
-    if (this.#spawner?.done && this.enemies.every((e) => !e.alive)) {
+    if (this.#spawners.length === 0 && this.enemies.every((e) => !e.alive)) {
       if (this.wave >= WAVES.length) this.#setPhase('won');
       else this.#setPhase('build');
     }

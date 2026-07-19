@@ -81,6 +81,24 @@ describe('Run', () => {
     expect(run.lives).toBe(0);
   });
 
+  it('stacks concurrent waves and multiplies drops', () => {
+    const run = makeRun();
+    const drops: { amount: number; mult: number }[] = [];
+    run.on((e) => {
+      if (e.type === 'drop') drops.push({ amount: e.amount, mult: e.mult });
+    });
+    run.placeTower(towerById('railgun'), 500, 0);
+    run.startWave();
+    step(run, 1);
+    run.startWave(); // send wave 2 early — waves now overlap
+    step(run, 6);
+    expect(run.wave).toBe(2);
+    expect(run.activeWaveCount()).toBeGreaterThanOrEqual(2);
+    expect(drops.length).toBeGreaterThan(0);
+    expect(drops.some((d) => d.mult > 1)).toBe(true);
+    expect(run.palladium).toBeGreaterThan(0);
+  });
+
   it('wins after clearing wave 15', () => {
     const run = makeRun();
     const superTower: TowerDef = {

@@ -1,6 +1,6 @@
 import type { Rng } from '../core/rng';
 import { NEON_SIGN_COLORS } from '../data/palette';
-import { Path } from './path';
+import { Path, type PathPoint } from './path';
 
 /**
  * City layout — pure data, fully deterministic from the seeded RNG.
@@ -59,6 +59,8 @@ export interface CityLayout {
   signs: SignSpec[];
   holos: HoloSpec[];
   vents: VentSpec[];
+  /** Discrete tower-snap points on rooftops. */
+  slots: PathPoint[];
 }
 
 export const SIGN_WORDS = [
@@ -220,7 +222,23 @@ export function computeCityLayout(rng: Rng, width: number, height: number): City
     });
   }
 
-  return { width, height, streetWidth, path, buildings, signs, holos, vents };
+  // Tower slots on rooftops — kept only within engagement range of the
+  // street; deep-city roofs are useless and not buildable
+  const MAX_ENGAGE = 200;
+  const slots: PathPoint[] = [];
+  for (const b of buildings) {
+    const usable = b.w - 24;
+    const n = Math.max(0, Math.floor(usable / 34));
+    for (let i = 0; i < n; i++) {
+      const slot = {
+        x: b.x + 12 + (usable / n) * (i + 0.5),
+        y: b.y - b.depth * 0.5, // mid top face
+      };
+      if (path.closestPoint(slot).distance <= MAX_ENGAGE) slots.push(slot);
+    }
+  }
+
+  return { width, height, streetWidth, path, buildings, signs, holos, vents, slots };
 }
 
 /**

@@ -12,6 +12,8 @@ export interface EnemyDef {
   radius: number;
   /** data-core damage when this unit leaks */
   cores: number;
+  /** base palladium dropped on kill (before pressure multiplier) */
+  drop: number;
   tint: number;
   scale: number;
 }
@@ -25,6 +27,7 @@ export const ENEMIES: readonly EnemyDef[] = [
     tier: 'street',
     radius: 12,
     cores: 1,
+    drop: 1,
     tint: 0xdfe9ff,
     scale: 0.9,
   },
@@ -36,6 +39,7 @@ export const ENEMIES: readonly EnemyDef[] = [
     tier: 'street',
     radius: 8,
     cores: 1,
+    drop: 1,
     tint: 0x9dffea,
     scale: 0.6,
   },
@@ -47,6 +51,7 @@ export const ENEMIES: readonly EnemyDef[] = [
     tier: 'mega',
     radius: 16,
     cores: 3,
+    drop: 8,
     tint: 0xffb36b,
     scale: 1.35,
   },

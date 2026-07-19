@@ -10,7 +10,8 @@ import { SearchlightSystem } from './fx/searchlights';
 import { SmokeSystem } from './fx/smoke';
 import { TrafficSystem } from './fx/traffic';
 import { createWebGpuRain, type WebGpuRain } from './fx/webgpu-rain';
-import { canPlace } from './game/placement';
+import { dropMultiplier } from './game/economy';
+import { isOccupied, nearestSlot } from './game/placement';
 import { Run } from './game/run';
 import { RunView } from './game/runView';
 import { BuildBar } from './ui/buildbar';
@@ -106,32 +107,70 @@ const buildBar = new BuildBar(DESIGN_W, DESIGN_H - 44);
 scene.addChild(buildBar.container);
 
 let selected: TowerDef | null = null;
+let autoSend = false;
 const ghost = new Graphics();
 ghost.visible = false;
 scene.addChild(ghost);
-let ghostValid = false;
+const slotPads = new Graphics();
+slotPads.visible = false;
+scene.addChild(slotPads);
+
+function drawSlotPads(): void {
+  slotPads.clear();
+  if (!selected) {
+    slotPads.visible = false;
+    return;
+  }
+  slotPads.visible = true;
+  for (const s of layout.slots) {
+    const taken = isOccupied(s, run.towers);
+    slotPads
+      .circle(s.x, s.y, 5)
+      .fill({ color: taken ? 0xff4455 : 0x66ff99, alpha: taken ? 0.12 : 0.22 });
+  }
+}
 
 function refreshGhost(x: number, y: number): void {
   if (!selected) {
     ghost.visible = false;
     return;
   }
-  ghostValid = canPlace(layout, { x, y }, run.towers).ok;
-  const tint = ghostValid ? 0x66ff99 : 0xff4455;
   ghost.clear();
-  ghost.circle(x, y, 12).stroke({ width: 1.5, color: tint });
-  ghost.circle(x, y, selected.range).stroke({ width: 1, color: tint, alpha: 0.25 });
+  const slot = nearestSlot(layout, { x, y });
+  if (!slot) {
+    ghost.visible = false;
+    return;
+  }
+  const taken = isOccupied(slot, run.towers);
+  const tint = taken ? 0xff4455 : 0x66ff99;
+  // semi-transparent tower preview snapped to the nearest slot
+  ghost.circle(slot.x, slot.y, 10).fill({ color: selected.tint, alpha: 0.35 });
+  ghost
+    .moveTo(slot.x, slot.y)
+    .lineTo(slot.x, slot.y - 14)
+    .stroke({ width: 3, color: selected.tint, alpha: 0.35 });
+  ghost.circle(slot.x, slot.y, 10).stroke({ width: 1.5, color: tint, alpha: 0.9 });
+  ghost.circle(slot.x, slot.y, selected.range).stroke({ width: 1, color: tint, alpha: 0.22 });
   ghost.visible = true;
 }
 
 function statusText(): string {
+  const waves = run.activeWaveCount();
+  const multText = waves > 1 ? ` · ×${run.currentMult().toFixed(1)} (${waves} waves)` : '';
   const hint =
-    run.phase === 'build' ? '[enter] start wave' : run.phase === 'wave' ? 'wave in progress' : '';
-  return `LIVES ${run.lives} · WAVE ${run.wave}/${WAVES.length} · ${hint}`;
+    run.phase === 'build'
+      ? '[enter] send wave'
+      : run.phase === 'wave'
+        ? `[enter] send early ×${dropMultiplier(waves + 1).toFixed(1)}`
+        : '';
+  return `LIVES ${run.lives} · WAVE ${run.wave}/${WAVES.length} · Pd ${Math.floor(run.palladium)}${multText} · ${hint}`;
 }
 
 run.on((e) => {
   if (e.type !== 'phase') return;
+  if (e.phase === 'build' && autoSend && run.wave < WAVES.length) {
+    run.startWave(); // auto-send on clear
+  }
   if (e.phase === 'won' || e.phase === 'lost') {
     const endCard = showTitleCard(
       DESIGN_W,
@@ -154,9 +193,11 @@ app.stage.on('pointermove', (event) => {
 app.stage.on('pointerdown', (event) => {
   if (!selected) return;
   const p = scene.toLocal(event.global);
-  if (canPlace(layout, p, run.towers).ok) {
-    const tower = run.placeTower(selected, p.x, p.y);
+  const slot = nearestSlot(layout, p);
+  if (slot && !isOccupied(slot, run.towers)) {
+    const tower = run.placeTower(selected, slot.x, slot.y);
     runView.addTowerView(tower);
+    drawSlotPads();
     refreshGhost(p.x, p.y);
   }
 });
@@ -175,7 +216,7 @@ function refreshHud(): void {
     audioState === 'off' ? '[click] audio on' : audioState === 'muted' ? 'MUTED' : 'AUDIO ON';
   hud.text =
     `SHIFT 01 · SEED ${SEED} · TIME ${clock.scale}x · RAIN ${rainLabel} · ${audioLabel} · ` +
-    `[space] pause · [1/2/4] speed · [m] mute`;
+    `[a] auto ${autoSend ? 'ON' : 'off'} · [space] pause · [1/2/4] speed · [m] mute`;
 }
 refreshHud();
 scene.addChild(hud);
@@ -210,16 +251,21 @@ window.addEventListener('keydown', (event) => {
     audioState = toggleMute() ? 'muted' : 'on';
   }
   if (event.key === 'Enter') run.startWave();
+  if (event.key === 'a' || event.key === 'A') {
+    autoSend = !autoSend;
+  }
   if (event.key === 'Escape') {
     selected = null;
     buildBar.setSelected(null);
     ghost.visible = false;
+    drawSlotPads();
   }
   const towerPick = towerByKey(event.key.toLowerCase());
   if (towerPick) {
     selected = selected?.id === towerPick.id ? null : towerPick;
     buildBar.setSelected(selected?.id ?? null);
     if (!selected) ghost.visible = false;
+    drawSlotPads();
   }
   refreshHud();
 });

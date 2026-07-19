@@ -98,6 +98,13 @@ describe('computeCityLayout', () => {
       }
     }
   });
+  it('keeps tower slots within engagement range of the street', () => {
+    const layout = computeCityLayout(createRng(1337), W, H);
+    expect(layout.slots.length).toBeGreaterThan(0);
+    for (const s of layout.slots) {
+      expect(layout.path.closestPoint(s).distance).toBeLessThanOrEqual(200);
+    }
+  });
 });
 
 describe('makeSurfaceMap', () => {
@@ -114,6 +121,7 @@ describe('makeSurfaceMap', () => {
     signs: [],
     holos: [],
     vents: [],
+    slots: [],
   };
   const surf = makeSurfaceMap(handLayout, 780);
 
