@@ -1,0 +1,18 @@
+# Dependencies & build output
+node_modules/
+dist/
+*.log
+
+# OS noise
+.DS_Store
+
+# Agent worktrees
+.agent/
+
+# Game assets live in Google storage, NEVER in git (source + docs only).
+# Populate locally via the asset sync pipeline (see docs/).
+assets/
+art/
+textures/
+sprites/
+audio/
