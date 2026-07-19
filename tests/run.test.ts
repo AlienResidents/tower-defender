@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createRng } from '../src/core/rng';
 import { towerById, type TowerDef } from '../src/data/towers';
 import { Run, type RunEvent } from '../src/game/run';
 import { Path } from '../src/world/path';
@@ -9,6 +10,7 @@ function makeRun(): Run {
       { x: 0, y: 0 },
       { x: 1000, y: 0 },
     ]),
+    createRng(42),
   );
 }
 

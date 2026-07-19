@@ -15,6 +15,7 @@ import { isOccupied, nearestSlot } from './game/placement';
 import { Run } from './game/run';
 import { RunView } from './game/runView';
 import { BuildBar } from './ui/buildbar';
+import { DicePanel } from './ui/dicepanel';
 import { showTitleCard } from './ui/titlecard';
 import { buildCity } from './world/city';
 import { computeCityLayout, makeSurfaceMap } from './world/city-layout';
@@ -99,12 +100,23 @@ scene.addChild(searchlights.container);
 scene.addChild(traffic.container);
 if (rain) scene.addChild(rain.container);
 
-// --- game: run state + views + build bar ---
-const run = new Run(layout.path);
+// --- game: run state + views + build bar + dice panel ---
+const run = new Run(layout.path, rng);
 const runView = new RunView(run);
 scene.addChild(runView.container);
 const buildBar = new BuildBar(DESIGN_W, DESIGN_H - 44);
 scene.addChild(buildBar.container);
+
+let pendingSlot: { x: number; y: number } | null = null;
+const dicePanel = new DicePanel(run.dice, (def) => {
+  if (pendingSlot) {
+    const tower = run.placeTower(def, pendingSlot.x, pendingSlot.y);
+    runView.addTowerView(tower);
+    drawSlotPads();
+  }
+  pendingSlot = null;
+});
+scene.addChild(dicePanel.container);
 
 let selected: TowerDef | null = null;
 let autoSend = false;
@@ -163,7 +175,7 @@ function statusText(): string {
       : run.phase === 'wave'
         ? `[enter] send early ×${dropMultiplier(waves + 1).toFixed(1)}`
         : '';
-  return `LIVES ${run.lives} · WAVE ${run.wave}/${WAVES.length} · Pd ${Math.floor(run.palladium)}${multText} · ${hint}`;
+  return `LIVES ${run.lives} · WAVE ${run.wave}/${WAVES.length} · Pd ${Math.floor(run.palladium)} · Sv ${Math.floor(run.dice.salvage)}${multText} · ${hint}`;
 }
 
 run.on((e) => {
@@ -191,14 +203,17 @@ app.stage.on('pointermove', (event) => {
   refreshGhost(p.x, p.y);
 });
 app.stage.on('pointerdown', (event) => {
+  if (dicePanel.isOpen) return; // modal owns clicks while open
   if (!selected) return;
   const p = scene.toLocal(event.global);
   const slot = nearestSlot(layout, p);
   if (slot && !isOccupied(slot, run.towers)) {
-    const tower = run.placeTower(selected, slot.x, slot.y);
-    runView.addTowerView(tower);
-    drawSlotPads();
-    refreshGhost(p.x, p.y);
+    pendingSlot = slot;
+    if (run.dice.begin(selected)) {
+      dicePanel.open(DESIGN_W / 2, DESIGN_H / 2 - 40);
+    } else {
+      pendingSlot = null;
+    }
   }
 });
 
@@ -255,10 +270,15 @@ window.addEventListener('keydown', (event) => {
     autoSend = !autoSend;
   }
   if (event.key === 'Escape') {
-    selected = null;
-    buildBar.setSelected(null);
-    ghost.visible = false;
-    drawSlotPads();
+    if (dicePanel.isOpen) {
+      dicePanel.close(); // abandons the purchase, dice become salvage
+      pendingSlot = null;
+    } else {
+      selected = null;
+      buildBar.setSelected(null);
+      ghost.visible = false;
+      drawSlotPads();
+    }
   }
   const towerPick = towerByKey(event.key.toLowerCase());
   if (towerPick) {
@@ -290,5 +310,6 @@ app.ticker.add((ticker) => {
     runView.sync(dt);
   });
   buildBar.setStatus(statusText());
+  dicePanel.update(rawDt);
   if (clock.paused) card.update(rawDt); // pause screen animates on wall time
 });

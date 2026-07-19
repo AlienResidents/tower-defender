@@ -12,6 +12,8 @@ export interface TowerDef {
   range: number; // px
   fireRate: number; // shots per second
   damage: number;
+  /** dice price (spec §8: multiples of 3/6/8/10) */
+  price: number;
   /** missile splash radius / chain bounce range, where applicable */
   aux: number;
   /** rounds per burst (kind 'burst') */
@@ -31,6 +33,7 @@ export const TOWERS: readonly TowerDef[] = [
     range: 260,
     fireRate: 0.5,
     damage: 55,
+    price: 60,
     aux: 0,
     tint: 0x9df5ff,
   },
@@ -43,6 +46,7 @@ export const TOWERS: readonly TowerDef[] = [
     range: 170,
     fireRate: 4,
     damage: 3,
+    price: 30,
     aux: 0,
     tint: 0xff2bd6,
   },
@@ -55,6 +59,7 @@ export const TOWERS: readonly TowerDef[] = [
     range: 230,
     fireRate: 0.8,
     damage: 22,
+    price: 48,
     aux: 55,
     tint: 0xffa63d,
   },
@@ -67,6 +72,7 @@ export const TOWERS: readonly TowerDef[] = [
     range: 140,
     fireRate: 1.2,
     damage: 9,
+    price: 24,
     aux: 75,
     tint: 0x66d9ff,
   },
@@ -79,6 +85,7 @@ export const TOWERS: readonly TowerDef[] = [
     range: 190,
     fireRate: 12,
     damage: 2,
+    price: 36,
     aux: 0,
     burst: 14,
     reload: 1.3,

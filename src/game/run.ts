@@ -1,9 +1,11 @@
+import type { Rng } from '../core/rng';
 import type { EnemyDef } from '../data/enemies';
 import { enemyById } from '../data/enemies';
 import type { TowerDef } from '../data/towers';
 import { WAVES } from '../data/waves';
 import type { Path } from '../world/path';
 import { applyDamage } from './combat';
+import { DiceSystem } from './dice';
 import { dropMultiplier } from './economy';
 import { WaveSpawner } from './spawner';
 
@@ -79,8 +81,22 @@ export class Run {
   #uid = 1;
   #listeners: ((e: RunEvent) => void)[] = [];
 
-  constructor(path: Path) {
+  /** The dice economy — tray, purchases, recharges (spec §8). */
+  readonly dice: DiceSystem;
+
+  constructor(path: Path, rng: Rng) {
     this.#path = path;
+    this.dice = new DiceSystem(rng, {
+      balance: () => this.palladium,
+      spend: (amount) => {
+        if (this.palladium < amount) return false;
+        this.palladium -= amount;
+        return true;
+      },
+      credit: (amount) => {
+        this.palladium += amount;
+      },
+    });
   }
 
   on(fn: (e: RunEvent) => void): void {

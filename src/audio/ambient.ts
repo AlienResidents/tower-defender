@@ -53,8 +53,37 @@ function buildBed(): Tone.Gain {
   buildRain(out);
   buildCityLife(out);
   buildMusic(out);
+  buildDice(out);
   Tone.Transport.start();
   return out;
+}
+
+/** Dice audio bus — landing thunks, pitch inversely mapped to side count. */
+let diceSynth: Tone.MembraneSynth | null = null;
+
+function buildDice(out: Tone.Gain): void {
+  diceSynth = new Tone.MembraneSynth({
+    pitchDecay: 0.012,
+    octaves: 3,
+    envelope: { attack: 0.001, decay: 0.12, sustain: 0 },
+  });
+  const diceGain = new Tone.Gain(0.4);
+  diceSynth.connect(diceGain);
+  diceGain.connect(out);
+}
+
+/**
+ * Dice landing sounds: fewer sides = higher pitch, more sides = heavier
+ * (spec §8/operator). Staggered per die for the tray-tumble feel.
+ */
+export function playDiceRoll(sides: readonly number[]): void {
+  if (!master || !diceSynth || sides.length === 0) return;
+  const synth = diceSynth; // narrowed binding for the closure
+  sides.forEach((s, i) => {
+    const freq = 2400 / Math.pow(s, 0.5); // d3 ~1386Hz, d100 ~240Hz
+    const when = Tone.now() + 0.55 + i * 0.11 + Math.random() * 0.05;
+    synth.triggerAttackRelease(freq, 0.1, when);
+  });
 }
 
 /** Rain: bandpass hiss with gusts + brown-noise body + droplet plinks. */
