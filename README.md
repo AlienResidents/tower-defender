@@ -2,7 +2,7 @@
 
 A neon-drenched sci-fi tower defense game — Blade Runner's rain-slicked megacity crossed with Cowboy Bebop's cool. Original art, original maps, mechanical enemies (robots, mechs, drones), futuristic weapons.
 
-**Status:** POC planned. Design spec + implementation plan approved — see `docs/`. Build not started.
+**Status:** M0 scaffold complete (tag `m0`). Next: M1 beauty spike (issue #2).
 
 ## Vision
 
