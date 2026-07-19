@@ -1,4 +1,4 @@
-import { Application, Text } from 'pixi.js';
+import { Application, Container, Text } from 'pixi.js';
 import { armAmbientAudio, pauseMusic, resumeMusic, toggleMute } from './audio/ambient';
 import { Clock } from './core/clock';
 import { createRng } from './core/rng';
@@ -36,15 +36,37 @@ document.body.appendChild(app.canvas);
 
 const rng = createRng(SEED);
 const clock = new Clock();
-const { width, height } = app.screen;
 
-// --- scene ---
-const layout = computeCityLayout(rng, width, height);
+// Fixed design resolution — layout is generated once and only ever scaled
+// (letterboxed). Map geometry is gameplay; resize must never relayout.
+const DESIGN_W = 1920;
+const DESIGN_H = 1080;
+const scene = new Container();
+app.stage.addChild(scene);
+
+function fitScene(): void {
+  const scale = Math.min(app.screen.width / DESIGN_W, app.screen.height / DESIGN_H);
+  scene.scale.set(scale);
+  scene.position.set(
+    (app.screen.width - DESIGN_W * scale) / 2,
+    (app.screen.height - DESIGN_H * scale) / 2,
+  );
+  const overlay = document.querySelector<HTMLCanvasElement>('#webgpu-rain');
+  if (overlay) {
+    overlay.style.left = `${scene.position.x}px`;
+    overlay.style.top = `${scene.position.y}px`;
+    overlay.style.width = `${DESIGN_W * scale}px`;
+    overlay.style.height = `${DESIGN_H * scale}px`;
+  }
+}
+
+// --- scene (built at design resolution, always) ---
+const layout = computeCityLayout(rng, DESIGN_W, DESIGN_H);
 const city = buildCity(layout);
 const smoke = new SmokeSystem(rng, layout.vents);
 const gliders = new GliderSystem(rng, layout.path, 6);
-const searchlights = new SearchlightSystem(width, height);
-const traffic = new TrafficSystem(rng, width, height, 6);
+const searchlights = new SearchlightSystem(DESIGN_W, DESIGN_H);
+const traffic = new TrafficSystem(rng, DESIGN_W, DESIGN_H, 6);
 
 // --- rain backend selection ---
 const params = new URLSearchParams(location.search);
@@ -55,8 +77,8 @@ let webgpuRain: WebGpuRain | null = null;
 if (params.get('particles') === 'webgpu') {
   const overlay = document.querySelector<HTMLCanvasElement>('#webgpu-rain');
   if (overlay) {
-    overlay.width = width;
-    overlay.height = height;
+    overlay.width = DESIGN_W;
+    overlay.height = DESIGN_H;
     try {
       webgpuRain = await createWebGpuRain(overlay, SEED);
     } catch (err) {
@@ -67,15 +89,15 @@ if (params.get('particles') === 'webgpu') {
   }
 }
 if (!webgpuRain) {
-  rain = new PixiRain(rng, width, height, 700);
+  rain = new PixiRain(rng, DESIGN_W, DESIGN_H, 700);
 }
 
-app.stage.addChild(city.container);
-app.stage.addChild(smoke.container);
-app.stage.addChild(gliders.container);
-app.stage.addChild(searchlights.container);
-app.stage.addChild(traffic.container);
-if (rain) app.stage.addChild(rain.container);
+scene.addChild(city.container);
+scene.addChild(smoke.container);
+scene.addChild(gliders.container);
+scene.addChild(searchlights.container);
+scene.addChild(traffic.container);
+if (rain) scene.addChild(rain.container);
 
 // --- HUD ---
 let audioState: 'off' | 'on' | 'muted' = 'off';
@@ -84,7 +106,7 @@ const hud = new Text({
   style: { fontFamily: '"Courier New", monospace', fontSize: 13, fill: 0x3ec6d8 },
 });
 hud.anchor.set(0, 1);
-hud.position.set(16, height - 12);
+hud.position.set(16, DESIGN_H - 12);
 
 function refreshHud(): void {
   const audioLabel =
@@ -94,16 +116,18 @@ function refreshHud(): void {
     `[space] pause · [1/2/4] speed · [m] mute`;
 }
 refreshHud();
-app.stage.addChild(hud);
+scene.addChild(hud);
 
 // --- title card ---
 const card = showTitleCard(
-  width,
-  height,
+  DESIGN_W,
+  DESIGN_H,
   'SHIFT 01 :: NEON DISTRICT',
   'INITIALIZE // PHOSPHOR ONLINE',
 );
-app.stage.addChild(card.container);
+scene.addChild(card.container);
+fitScene();
+app.renderer.on('resize', fitScene);
 
 // --- input ---
 window.addEventListener('keydown', (event) => {
