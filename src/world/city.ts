@@ -34,7 +34,6 @@ interface HoloAnim {
   speed: number;
   bobPhase: number;
   glitchSeed: number;
-  baseY: number;
 }
 
 function hexPoints(cx: number, cy: number, r: number): number[] {
@@ -175,27 +174,30 @@ export function buildCity(layout: CityLayout): CityView {
     });
   });
 
-  // --- holographic ads: mast-mounted, framed, glyph content, clipped ---
+  // --- holographic ads: static mast, bobbing framed panel, clipped content ---
   const holoAnims: HoloAnim[] = [];
   layout.holos.forEach((h, i) => {
     const root = new Container();
     root.position.set(h.x, h.y);
 
-    // emitter mast connecting panel to the roofline
+    // static emitter mast + roof foot plate — starts exactly at the panel's
+    // bottom edge, never intrudes into the display
     const mastX = h.mountX - h.x;
     const mastG = new Graphics();
-    mastG.rect(mastX - 3, h.h, 6, h.mast).fill(PALETTE.building);
-    mastG.rect(mastX - 3, h.h, 6, h.mast).stroke({ width: 1, color: PALETTE.buildingEdge });
-    mastG.circle(mastX, h.h + 2, 4).fill({ color: h.color, alpha: 0.9 });
+    mastG.rect(mastX - 4, h.h, 8, h.mast).fill(PALETTE.building);
+    mastG.rect(mastX - 4, h.h, 8, h.mast).stroke({ width: 1, color: PALETTE.buildingEdge });
+    // foot plate where the mast meets the roofline
+    mastG.rect(mastX - 9, h.h + h.mast - 2, 18, 4).fill(PALETTE.buildingEdge);
+    mastG.circle(mastX, h.h + 5, 4).fill({ color: h.color, alpha: 0.9 });
     root.addChild(mastG);
 
     // panel base (gradient + scanlines texture)
-    const panel = new Sprite(makeHoloTexture(h.color));
-    panel.width = h.w;
-    panel.height = h.h;
-    panel.alpha = 0.55;
-    panel.blendMode = 'add';
-    root.addChild(panel);
+    const panelSprite = new Sprite(makeHoloTexture(h.color));
+    panelSprite.width = h.w;
+    panelSprite.height = h.h;
+    panelSprite.alpha = 0.55;
+    panelSprite.blendMode = 'add';
+    root.addChild(panelSprite);
 
     // masked content container — nothing escapes the frame
     const maskG = new Graphics().roundRect(2, 2, h.w - 4, h.h - 4, 3).fill(0xffffff);
@@ -261,7 +263,6 @@ export function buildCity(layout: CityLayout): CityView {
       speed: 30 + ((i * 17) % 25),
       bobPhase: i * 2.1,
       glitchSeed: i * 7.3,
-      baseY: h.y,
     });
   });
 
@@ -297,8 +298,7 @@ export function buildCity(layout: CityLayout): CityView {
       s.bar.position.y = ((t * s.speed + s.offset * 40) % (s.panelH + 30)) - 15;
     }
     for (const a of holoAnims) {
-      // hover bob + micro-flicker that never vanishes (unlike sign buzz-outs)
-      a.root.y = a.baseY + Math.sin(t * 0.8 + a.bobPhase) * 3;
+      // fixed-mounted panels: no bob — liveliness from flicker/glitch/shimmer
       a.root.alpha =
         0.85 + 0.1 * Math.sin(t * 7.3 + a.bobPhase * 3) * Math.sin(t * 2.1 + a.bobPhase);
       // rare glitch: brief horizontal content jitter
