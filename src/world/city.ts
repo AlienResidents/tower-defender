@@ -132,7 +132,7 @@ export function buildCity(layout: CityLayout): CityView {
     const panel = new Sprite(makeHoloTexture(h.color));
     panel.width = h.w;
     panel.height = h.h;
-    panel.alpha = 0.85;
+    panel.alpha = 0.55; // translucent — reads as projection, not billboard
     panel.blendMode = 'add';
 
     const bar = new Sprite(makeSoftDiscTexture());

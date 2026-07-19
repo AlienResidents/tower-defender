@@ -98,14 +98,16 @@ export class PixiRain implements WeatherSystem {
     for (let i = this.#splashes.length - 1; i >= 0; i--) {
       const sp = this.#splashes[i];
       sp.life += dt;
-      const t = sp.life / 0.4;
+      const t = sp.life / 0.3;
       if (t >= 1) {
         sp.sprite.visible = false;
         this.#splashPool.push(sp.sprite);
         this.#splashes.splice(i, 1);
       } else {
-        sp.sprite.scale.set(0.3 + t * 1.1);
-        sp.sprite.alpha = 0.5 * (1 - t);
+        // small squashed ellipses — ground ripples, not bubbles
+        const s = 0.12 + t * 0.3;
+        sp.sprite.scale.set(s, s * 0.32);
+        sp.sprite.alpha = 0.35 * (1 - t);
       }
     }
   }

@@ -6,7 +6,7 @@ export const PALETTE = {
   asphaltSheen: 0x141f38,
   building: 0x0b1020,
   buildingTop: 0x101830,
-  buildingEdge: 0x1b2a4a,
+  buildingEdge: 0x24406e,
   windowDark: 0x0e1628,
   windowLit: 0x2a3d5c,
   windowWarm: 0x6b4d1f,

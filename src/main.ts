@@ -1,5 +1,5 @@
 import { Application, Text } from 'pixi.js';
-import { armAmbientAudio } from './audio/ambient';
+import { armAmbientAudio, toggleMute } from './audio/ambient';
 import { Clock } from './core/clock';
 import { createRng } from './core/rng';
 import { PALETTE } from './data/palette';
@@ -78,7 +78,7 @@ app.stage.addChild(traffic.container);
 if (rain) app.stage.addChild(rain.container);
 
 // --- HUD ---
-let audioOn = false;
+let audioState: 'off' | 'on' | 'muted' = 'off';
 const hud = new Text({
   text: '',
   style: { fontFamily: '"Courier New", monospace', fontSize: 13, fill: 0x3ec6d8 },
@@ -87,9 +87,11 @@ hud.anchor.set(0, 1);
 hud.position.set(16, height - 12);
 
 function refreshHud(): void {
+  const audioLabel =
+    audioState === 'off' ? '[click] audio on' : audioState === 'muted' ? 'MUTED' : 'AUDIO ON';
   hud.text =
-    `SHIFT 01 · SEED ${SEED} · TIME ${clock.scale}x · RAIN ${rainLabel} · ` +
-    `${audioOn ? 'AUDIO ON' : '[click] audio'} · [space] pause · [1/2/4] speed`;
+    `SHIFT 01 · SEED ${SEED} · TIME ${clock.scale}x · RAIN ${rainLabel} · ${audioLabel} · ` +
+    `[space] pause · [1/2/4] speed · [m] mute`;
 }
 refreshHud();
 app.stage.addChild(hud);
@@ -110,10 +112,13 @@ window.addEventListener('keydown', (event) => {
   if (event.key === '1') clock.setScale(1);
   if (event.key === '2') clock.setScale(2);
   if (event.key === '4') clock.setScale(4);
+  if (event.key === 'm' && audioState !== 'off') {
+    audioState = toggleMute() ? 'muted' : 'on';
+  }
   refreshHud();
 });
 armAmbientAudio(() => {
-  audioOn = true;
+  audioState = 'on';
   refreshHud();
 });
 
