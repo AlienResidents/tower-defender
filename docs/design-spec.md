@@ -1,12 +1,12 @@
 # PHOSPHOR — Design Spec
 
-*Working title — trademark pass outstanding (see §14). Status: **APPROVED 2026-07-19** — ready for implementation plan.*
+_Working title — trademark pass outstanding (see §14). Status: **APPROVED 2026-07-19** — ready for implementation plan._
 
 ## 1. Overview
 
 A neon-drenched sci-fi tower defense game for the browser (Chrome-first). Blade Runner's rain-slicked megacity meets Cowboy Bebop's session structure and space-western loneliness. All art, maps, enemies, and music are original to this game — nothing borrowed. Browser build is potentially **the** game, not a throwaway prototype.
 
-**Signature mechanic:** the economy is *dice*. Towers and upgrades are bought with polyhedral dice, rolled on purchase, consumed, no change given.
+**Signature mechanic:** the economy is _dice_. Towers and upgrades are bought with polyhedral dice, rolled on purchase, consumed, no change given.
 
 ## 2. Fiction & Naming
 
@@ -43,15 +43,15 @@ A neon-drenched sci-fi tower defense game for the browser (Chrome-first). Blade 
 
 ## 7. Core Systems
 
-| System | Decision |
-|---|---|
-| Pathing | POC: fixed paths. Full game: hybrid (some open-field mazing maps) |
-| Time controls | Tactical pause (issue orders while frozen); 1x / 2x / 4x |
-| Difficulty | 4 tiers × per-wave scaling curve. Tier names per §2 |
-| Saves | One-shot shifts — death = restart shift. Meta progression persists. |
-| Lives | **Data-cores** — leaked enemies destroy cores scaled by size; a boss leak takes most/all |
-| Build phase | Build anytime; tactical pause covers planning |
-| Meta | Roguelite: post-shift **choice of 1 of N** unlocks (tower / attribute branch / enemy intel) |
+| System        | Decision                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------- |
+| Pathing       | POC: fixed paths. Full game: hybrid (some open-field mazing maps)                           |
+| Time controls | Tactical pause (issue orders while frozen); 1x / 2x / 4x                                    |
+| Difficulty    | 4 tiers × per-wave scaling curve. Tier names per §2                                         |
+| Saves         | One-shot shifts — death = restart shift. Meta progression persists.                         |
+| Lives         | **Data-cores** — leaked enemies destroy cores scaled by size; a boss leak takes most/all    |
+| Build phase   | Build anytime; tactical pause covers planning                                               |
+| Meta          | Roguelite: post-shift **choice of 1 of N** unlocks (tower / attribute branch / enemy intel) |
 
 ## 8. Economy — the dice system
 
@@ -65,6 +65,7 @@ A neon-drenched sci-fi tower defense game for the browser (Chrome-first). Blade 
 **Drops (Diablo-style):** kills drop **item upgrades** (rarity tiers, random affixes) and **palladium**. POC scope: run-scoped drops (elite kill → pick 1 of 3); full game: persistent stash + tower item slots.
 
 **Meta progression:**
+
 - **Salvage** — consolation from failed gambles (and trash drops); refines to palladium.
 - **Palladium** — the master meta-resource (drops from kills + salvage refinement). Spent on:
   - **Dice slots** (tray capacity)
@@ -74,16 +75,17 @@ A neon-drenched sci-fi tower defense game for the browser (Chrome-first). Blade 
 - **Attribute grid:** persistent per-tower-archetype (damage / fire rate / range / crit% / crit dmg / status potency). Exponential cost (~×1.35/rank), soft cap ~20, **free respec**.
 
 **Credits & stores (Rifts-inspired structure, original names):** palladium trades into three credit types, each spendable only at its store:
-| Credit | Store archetype | Notes |
-|---|---|---|
-| **CSC — Corporate Standard Credits** | Corporate Depot (official gear) | universal-standard riff |
-| **FOUNDRY Credits** | Foundry Exchange (mil-surp / high-tech) | mercantile riff |
-| **Black Market / GHOST Credits** | The Black Market (exotic, untraceable) | underworld riff |
-*(Confirmed names — CS/NGMI are Palladium IP, not usable.)* Exchange: **flat rate** palladium→credits.
+
+| Credit                                                                                                 | Store archetype                         | Notes                   |
+| ------------------------------------------------------------------------------------------------------ | --------------------------------------- | ----------------------- |
+| **CSC — Corporate Standard Credits**                                                                   | Corporate Depot (official gear)         | universal-standard riff |
+| **FOUNDRY Credits**                                                                                    | Foundry Exchange (mil-surp / high-tech) | mercantile riff         |
+| **Black Market / GHOST Credits**                                                                       | The Black Market (exotic, untraceable)  | underworld riff         |
+| _(Confirmed names — CS/NGMI are Palladium IP, not usable.)_ Exchange: **flat rate** palladium→credits. |
 
 ## 9. Combat — Rifts-derived (mechanics homage, original expression)
 
-- **Two-tier damage:** *street-class* vs *mega-class* (Rifts SDC/MDC). Street weapons do ~1% to mega plating — cheap towers handle trash waves; mega weapons (rail guns, particle beams) gate heavy mechs.
+- **Two-tier damage:** _street-class_ vs _mega-class_ (Rifts SDC/MDC). Street weapons do ~1% to mega plating — cheap towers handle trash waves; mega weapons (rail guns, particle beams) gate heavy mechs.
 - **Damage types:** kinetic / energy / explosive vs hull / shields / armor — light, readable, no hidden math.
 - Roster flavor homages (original names/visuals): rail guns, particle beams, plasma, ion, mini-missiles; skelebot-style infantry, flight power-armor-style air units, heavy walker mechs, repair bots, anchored siege-platform bosses.
 
@@ -99,7 +101,7 @@ Enemies **never attack towers**. One boss per shift ("villain of the week"); bos
 
 ## 12. Campaign Structure
 
-- POC: 1 shift, ~15 waves, 4–6 towers, 4–6 enemy types, run-scoped item drops — vertical slice proving the *look*.
+- POC: 1 shift, ~15 waves, 4–6 towers, 4–6 enemy types, run-scoped item drops — vertical slice proving the _look_.
 - Full game: **12 shifts** (launch), boss each, escalating biomes.
 - Map-unique mechanics (all confirmed): rain density cuts tower range / searchlight zones reveal cloaked / hackable neon signs = buff nodes / elevated skyway lanes.
 
@@ -111,6 +113,6 @@ Enemies **never attack towers**. One boss per shift ("villain of the week"); bos
 
 All interview questions resolved 2026-07-19. Carried into the plan phase:
 
-1. **Trademark search** on "Phosphor" (USPTO/EUIPO) before any public use; subtitle *Graveyard Shift* is the working differentiator.
+1. **Trademark search** on "Phosphor" (USPTO/EUIPO) before any public use; subtitle _Graveyard Shift_ is the working differentiator.
 2. **Balance numbers** — starting tray, prices, drop rates, refine rates, ratio-upgrade curve: TBD in plan/balancing passes.
 3. **POC scope lock:** 1 shift / ~15 waves / 4–6 towers / 4–6 enemy types / run-scoped item drops / tactical pause + 1x-2x-4x / data-core lives / meta persistence shell. Credit stores & persistent stash are full-game systems.

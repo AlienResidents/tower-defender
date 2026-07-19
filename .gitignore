@@ -11,8 +11,9 @@ dist/
 
 # Game assets live in Google storage, NEVER in git (source + docs only).
 # Populate locally via the asset sync pipeline (see docs/).
-assets/
-art/
-textures/
-sprites/
-audio/
+# Anchored to repo ROOT — bare 'audio/' style patterns would swallow src/audio/.
+/assets/
+/art/
+/textures/
+/sprites/
+/audio/

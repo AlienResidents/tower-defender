@@ -6,13 +6,17 @@ Covers the design spec, implementation plan, asset pipeline, and POC architectur
 ## Sections
 
 ### Design
-* [Design Spec](../docs/design-spec.md) — PHOSPHOR: vision, systems, dice economy, Rifts-derived combat (DRAFT)
+
+- [Design Spec](../docs/design-spec.md) — PHOSPHOR: vision, systems, dice economy, Rifts-derived combat (DRAFT)
 
 ### Planning
-* [Implementation Plan](../docs/implementation-plan.md) — POC milestones M0–M4, architecture, risks (APPROVED)
+
+- [Implementation Plan](../docs/implementation-plan.md) — POC milestones M0–M4, architecture, risks (APPROVED)
 
 ### Research
-* [Rendering / Audio / Naming](../docs/research/2026-07-19-rendering-audio-naming.md) — PixiJS-WebGL2 + WebGPU particles, Strudel-AGPL rejection, name collisions
+
+- [Rendering / Audio / Naming](../docs/research/2026-07-19-rendering-audio-naming.md) — PixiJS-WebGL2 + WebGPU particles, Strudel-AGPL rejection, name collisions
 
 ### Reference
-* [README](../README.md) — vision, repo policy (source+docs only; assets in Google storage)
+
+- [README](../README.md) — vision, repo policy (source+docs only; assets in Google storage)
