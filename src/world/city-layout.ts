@@ -18,13 +18,18 @@ export interface BuildingSpec {
 }
 
 export interface SignSpec {
+  /** Index of the host building in CityLayout.buildings. */
+  hostIdx: number;
+  /** band = lightbox in the rooftop band; blade = projecting sign on struts. */
+  style: 'band' | 'blade';
+  /** Blade only: -1 projects left of host, 1 projects right. */
+  side: -1 | 1;
   x: number;
   y: number;
   w: number;
   h: number;
   text: string;
   color: number;
-  vertical: boolean;
   fontSize: number;
 }
 
@@ -71,6 +76,13 @@ export const SIGN_WORDS = [
   'BAR',
 ] as const;
 
+function rectsOverlap(
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number },
+): boolean {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
 export function computeCityLayout(rng: Rng, width: number, height: number): CityLayout {
   const streetWidth = 84;
 
@@ -108,8 +120,8 @@ export function computeCityLayout(rng: Rng, width: number, height: number): City
     }
   }
 
-  // Signs on the buildings nearest the street (max 9). Size and font scale
-  // to fit the host — a sign must never extend past its building.
+  // Signs: modest lightbox panels in a band just under the roofline —
+  // realistic scale (never multi-story, never building-wide), horizontal only.
   const streetSorted = [...buildings]
     .map((b) => ({
       b,
@@ -119,41 +131,55 @@ export function computeCityLayout(rng: Rng, width: number, height: number): City
   const signs: SignSpec[] = [];
   for (const { b } of streetSorted.slice(0, 9)) {
     const text = rng.pick(SIGN_WORDS);
-    const vertical = rng.next() < 0.35;
     const color = rng.pick(NEON_SIGN_COLORS);
-    const availW = b.w - 16;
-    const availH = b.h - 10;
-    if (vertical) {
-      const fontSize = Math.min(20, Math.floor((availH - 16) / text.length - 4));
-      if (fontSize < 10 || availW < fontSize + 12) continue;
-      const w = fontSize + 14;
-      const h = text.length * (fontSize + 4) + 14;
-      signs.push({
-        x: b.x + rng.range(0, b.w - w),
-        y: b.y + 2 + rng.next() * Math.max(0, b.h - h - 6),
-        w,
-        h,
-        text,
-        color,
-        vertical,
-        fontSize,
-      });
-    } else {
-      const fontSize = Math.min(18, Math.floor((availW - 20) / (text.length * 0.64)));
-      if (fontSize < 9) continue;
-      const w = Math.ceil(text.length * fontSize * 0.64) + 20;
-      const h = fontSize + 16;
-      signs.push({
-        x: b.x + rng.range(0, b.w - w),
-        y: b.y + 2 + rng.next() * Math.max(0, b.h - h - 6),
-        w,
-        h,
-        text,
-        color,
-        vertical,
-        fontSize,
-      });
+    const hostIdx = buildings.indexOf(b);
+
+    // ~45% blade signs: small vertical panels on struts off a building side
+    if (rng.next() < 0.45) {
+      const fontSize = rng.range(8, 11);
+      const w = fontSize + 10;
+      const h = text.length * (fontSize + 3) + 10;
+      const strut = 8;
+      if (h + 12 < b.h) {
+        const y = b.y + rng.range(6, b.h - h - 6);
+        const preferred: -1 | 1 = rng.next() < 0.5 ? -1 : 1;
+        const fallback: -1 | 1 = preferred === 1 ? -1 : 1;
+        let placed = false;
+        for (const sd of [preferred, fallback]) {
+          const x = sd === -1 ? b.x - w - strut : b.x + b.w + strut;
+          if (x < 4 || x + w > width - 4) continue;
+          const rect = { x, y, w, h };
+          if (buildings.some((o) => o !== b && rectsOverlap(rect, o))) continue;
+          signs.push({ hostIdx, style: 'blade', side: sd, x, y, w, h, text, color, fontSize });
+          placed = true;
+          break;
+        }
+        if (placed) continue;
+      }
+      // no clean fit — fall through to a band sign
     }
+
+    // band sign: modest lightbox just under the roofline
+    let fontSize = rng.range(11, 16);
+    let w = Math.ceil(text.length * fontSize * 0.64) + 16;
+    if (w > b.w * 0.6) {
+      fontSize = Math.floor((b.w * 0.6 - 16) / (text.length * 0.64));
+      if (fontSize < 9) continue;
+      w = Math.ceil(text.length * fontSize * 0.64) + 16;
+    }
+    const h = fontSize + 10;
+    signs.push({
+      hostIdx,
+      style: 'band',
+      side: 1,
+      x: b.x + (b.w - w) * rng.range(0.2, 0.8),
+      y: b.y + 4, // the sign band just under the roofline
+      w,
+      h,
+      text,
+      color,
+      fontSize,
+    });
   }
 
   // Holographic ad panels mast-mounted on rooftops, centered on their host,

@@ -44,13 +44,24 @@ describe('computeCityLayout', () => {
     }
   });
 
-  it('fully contains every sign within some host building', () => {
+  it('band signs contained by host; blade signs clear of other buildings', () => {
     const layout = computeCityLayout(createRng(1337), W, H);
     for (const s of layout.signs) {
-      const contained = layout.buildings.some(
-        (b) => s.x >= b.x && s.x + s.w <= b.x + b.w && s.y >= b.y && s.y + s.h <= b.y + b.h,
-      );
-      expect(contained).toBe(true);
+      if (s.style === 'band') {
+        const host = layout.buildings[s.hostIdx];
+        expect(s.x).toBeGreaterThanOrEqual(host.x);
+        expect(s.x + s.w).toBeLessThanOrEqual(host.x + host.w);
+        expect(s.y).toBeGreaterThanOrEqual(host.y);
+        expect(s.y + s.h).toBeLessThanOrEqual(host.y + host.h);
+      } else {
+        layout.buildings.forEach((b, idx) => {
+          if (idx === s.hostIdx) return;
+          const overlaps = s.x < b.x + b.w && s.x + s.w > b.x && s.y < b.y + b.h && s.y + s.h > b.y;
+          expect(overlaps).toBe(false);
+        });
+        expect(s.x).toBeGreaterThanOrEqual(0);
+        expect(s.x + s.w).toBeLessThanOrEqual(layout.width);
+      }
     }
   });
 

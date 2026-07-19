@@ -83,8 +83,10 @@ export function buildCity(layout: CityLayout): CityView {
     refls.push(refl);
   });
 
-  // --- buildings: oblique extrusion, edges, window grids ---
-  for (const b of layout.buildings) {
+  // --- buildings: oblique extrusion, edges, window grids, sign bands ---
+  const SIGN_BAND_H = 32;
+  const signHosts = new Set(layout.signs.map((s) => s.hostIdx));
+  layout.buildings.forEach((b, idx) => {
     const g = new Graphics();
     g.poly([b.x, b.y, b.x + b.w, b.y, b.x + b.w, b.y - b.depth, b.x, b.y - b.depth]).fill(
       PALETTE.buildingTop,
@@ -96,26 +98,45 @@ export function buildCity(layout: CityLayout): CityView {
       color: PALETTE.buildingEdge,
       alpha: 0.7,
     });
-    // windows — deterministic hash pattern, no RNG needed at view time
+    // parapet line marking the sign band on host buildings
+    if (signHosts.has(idx)) {
+      g.moveTo(b.x + 4, b.y + SIGN_BAND_H)
+        .lineTo(b.x + b.w - 4, b.y + SIGN_BAND_H)
+        .stroke({ width: 1, color: PALETTE.buildingEdge, alpha: 0.6 });
+    }
+    // windows — deterministic hash pattern; hosts keep the sign band clear
+    const winTop = signHosts.has(idx) ? SIGN_BAND_H + 6 : 8;
     const cols = Math.floor(b.w / 18);
-    const rows = Math.floor(b.h / 22);
+    const rows = Math.max(0, Math.floor((b.h - winTop - 4) / 22));
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const hash = ((r * 7 + c * 13 + Math.floor(b.x)) % 100) / 100;
         const lit = hash < b.litRatio;
         const warm = (r * 3 + c * 11) % 10 < 2;
         const color = !lit ? PALETTE.windowDark : warm ? PALETTE.windowWarm : PALETTE.windowLit;
-        g.rect(b.x + 8 + c * 18, b.y + 8 + r * 22, 8, 10).fill({
+        g.rect(b.x + 8 + c * 18, b.y + winTop + r * 22, 8, 10).fill({
           color,
           alpha: lit ? 0.9 : 0.6,
         });
       }
     }
     container.addChild(g);
-  }
+  });
 
-  // --- neon signs ---
+  // --- neon signs (band lightboxes + blade panels on struts) ---
   layout.signs.forEach((s, i) => {
+    // struts for blade signs — behind the panel
+    if (s.style === 'blade') {
+      const host = layout.buildings[s.hostIdx];
+      const edgeX = s.side === -1 ? host.x : host.x + host.w;
+      const farX = s.side === -1 ? s.x + s.w : s.x;
+      const struts = new Graphics();
+      struts.moveTo(edgeX, s.y + 3).lineTo(farX, s.y + 3);
+      struts.moveTo(edgeX, s.y + s.h - 3).lineTo(farX, s.y + s.h - 3);
+      struts.stroke({ width: 2, color: PALETTE.buildingEdge });
+      container.addChild(struts);
+    }
+
     const sign = new Container();
     sign.position.set(s.x, s.y);
 
@@ -130,13 +151,13 @@ export function buildCity(layout: CityLayout): CityView {
       .stroke({ width: 1.5, color: s.color, alpha: 0.9 });
 
     const label = new Text({
-      text: s.vertical ? s.text.split('').join('\n') : s.text,
+      text: s.style === 'blade' ? s.text.split('').join('\n') : s.text,
       style: {
         fontFamily: '"Courier New", monospace',
         fontSize: s.fontSize,
         fill: s.color,
-        letterSpacing: s.vertical ? 2 : 3,
-        lineHeight: s.fontSize + 4,
+        letterSpacing: s.style === 'blade' ? 1 : 3,
+        ...(s.style === 'blade' ? { lineHeight: s.fontSize + 3 } : {}),
         align: 'center',
       },
     });
