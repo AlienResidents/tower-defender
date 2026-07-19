@@ -18,6 +18,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/node": "^26.1.1",
     "@webgpu/types": "^0.1.71",
     "eslint": "^10.7.0",
     "eslint-config-prettier": "^10.1.8",

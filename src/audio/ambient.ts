@@ -26,6 +26,11 @@ export function armAmbientAudio(onStart: () => void): void {
   window.addEventListener('keydown', begin, { once: true });
 }
 
+/** The ambient master bus — SFX route through it so [m] mute covers all. */
+export function audioMaster(): Tone.Gain | null {
+  return master;
+}
+
 /** Ramped gain-stage mute. Returns the new muted state. No-op before audio starts. */
 export function toggleMute(): boolean {
   if (!master) return false;

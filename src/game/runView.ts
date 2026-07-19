@@ -1,4 +1,6 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
+import { playWeaponSound } from '../audio/sfx';
+import type { WeaponSoundKind } from '../data/sfx';
 import type { EnemyState, Run, RunEvent, TowerState } from '../game/run';
 import { makeMechTexture, makeSoftDiscTexture } from '../render/textures';
 
@@ -43,9 +45,11 @@ export class RunView {
         this.#removeEnemy(e.enemy, false);
         break;
       case 'fire':
+        playWeaponSound(e.tower.def.kind as WeaponSoundKind);
         this.#fireFlash(e.tower, e.target);
         break;
       case 'splash':
+        playWeaponSound('splash');
         this.#puff(e.x, e.y, e.radius / 128, 0xffa63d);
         break;
     }

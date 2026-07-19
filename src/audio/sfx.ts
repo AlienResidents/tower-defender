@@ -1,0 +1,74 @@
+import * as Tone from 'tone';
+import { audioMaster } from './ambient';
+import { presetFor, type SfxPreset, type WeaponSoundKind } from '../data/sfx';
+
+/**
+ * Generic weapon-SFX engine: interprets a preset (osc sweep + noise mix +
+ * envelope + repeat hits). Short-lived nodes per hit, disposed after.
+ * Routes through the ambient master when present (so [m] mute covers SFX),
+ * otherwise its own bus (the /lab page runs without the ambient bed).
+ */
+
+let fallbackBus: Tone.Gain | null = null;
+
+function bus(): Tone.ToneAudioNode {
+  const master = audioMaster();
+  if (master) return master;
+  if (!fallbackBus) fallbackBus = new Tone.Gain(0.9).toDestination();
+  return fallbackBus;
+}
+
+function playHit(p: SfxPreset, time: number): void {
+  const out = bus();
+  const env = new Tone.AmplitudeEnvelope({
+    attack: 0.003,
+    decay: p.duration * 0.7,
+    sustain: 0,
+    release: p.duration * 0.3,
+  }).connect(out);
+
+  const osc = new Tone.Oscillator(p.freqStart, p.osc);
+  const oscGain = new Tone.Gain((1 - p.noise) * p.gain);
+  osc.connect(oscGain);
+  oscGain.connect(env);
+  osc.frequency.setValueAtTime(p.freqStart, time);
+  osc.frequency.exponentialRampTo(Math.max(p.freqEnd, 1), p.sweepTime, time);
+  osc.start(time).stop(time + p.duration + 0.05);
+
+  let noise: Tone.Noise | null = null;
+  let noiseFilter: Tone.Filter | null = null;
+  let noiseGain: Tone.Gain | null = null;
+  if (p.noise > 0.01) {
+    noise = new Tone.Noise('white');
+    noiseFilter = new Tone.Filter(p.noiseFreq, 'bandpass');
+    noiseGain = new Tone.Gain(p.noise * p.gain * 0.8);
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(env);
+    noise.start(time).stop(time + p.duration + 0.05);
+  }
+
+  env.triggerAttackRelease(p.duration, time);
+
+  const disposeAfter = Math.max(0, time - Tone.now() + p.duration + 0.4) * 1000;
+  setTimeout(() => {
+    osc.dispose();
+    oscGain.dispose();
+    env.dispose();
+    noise?.dispose();
+    noiseFilter?.dispose();
+    noiseGain?.dispose();
+  }, disposeAfter);
+}
+
+export function playPreset(p: SfxPreset): void {
+  for (let i = 0; i < p.hits; i++) {
+    playHit(p, Tone.now() + i * p.hitGap);
+  }
+}
+
+/** Play the currently-selected preset for a weapon kind (lab-tuned). */
+export function playWeaponSound(kind: WeaponSoundKind): void {
+  const preset = presetFor(kind);
+  if (preset) playPreset(preset);
+}
