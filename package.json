@@ -13,10 +13,12 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "pixi.js": "^8.19.0"
+    "pixi.js": "^8.19.0",
+    "tone": "^15.1.22"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@webgpu/types": "^0.1.71",
     "eslint": "^10.7.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.5",
