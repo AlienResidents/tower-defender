@@ -140,6 +140,14 @@ const SLIDERS: SliderSpec[] = [
     step: 10,
     hint: 'pitch the charge rises to',
   },
+  {
+    key: 'tailEnd',
+    label: 'doppler',
+    min: 0,
+    max: 2000,
+    step: 10,
+    hint: 'final pitch after the sweep — flyby fall (0 = off)',
+  },
 ];
 
 function sliderValue(spec: SliderSpec, preset: SfxPreset): number {
@@ -148,6 +156,7 @@ function sliderValue(spec: SliderSpec, preset: SfxPreset): number {
   if (spec.key === 'bodyGain') return preset.body?.gain ?? 0;
   if (spec.key === 'chargeTime') return preset.charge?.duration ?? 0;
   if (spec.key === 'chargeEnd') return preset.charge?.freqEnd ?? 1600;
+  if (spec.key === 'tailEnd') return preset.tailEnd ?? 0;
   return preset[spec.key] as number;
 }
 
@@ -174,6 +183,8 @@ function applySlider(spec: SliderSpec, v: number, preset: SfxPreset): void {
     if (spec.key === 'chargeTime') charge.duration = v;
     if (spec.key === 'chargeEnd') charge.freqEnd = v;
     setOverride(preset.id, { charge });
+  } else if (spec.key === 'tailEnd') {
+    setOverride(preset.id, { tailEnd: v === 0 ? undefined : v });
   } else {
     setOverride(preset.id, { [spec.key]: v } as Partial<SfxPreset>);
   }
@@ -266,6 +277,17 @@ function buildWeaponSection(kind: WeaponSoundKind): HTMLElement {
       ensureAudio();
       playPreset(currentPreset());
     };
+    const copy = document.createElement('button');
+    copy.textContent = '⧉ COPY CONFIG';
+    copy.onclick = () => {
+      const json = JSON.stringify({ [kind]: currentPreset() }, null, 2);
+      void navigator.clipboard.writeText(json).then(() => {
+        copy.textContent = '✓ COPIED';
+        setTimeout(() => {
+          copy.textContent = '⧉ COPY CONFIG';
+        }, 1200);
+      });
+    };
     const use = document.createElement('button');
     use.textContent = '★ SET DEFAULT';
     use.onclick = () => {
@@ -287,7 +309,7 @@ function buildWeaponSection(kind: WeaponSoundKind): HTMLElement {
       }
       renderAll();
     };
-    actions.append(play, use, reset, defaults);
+    actions.append(play, copy, use, reset, defaults);
   }
 
   function renderAll(): void {
@@ -302,6 +324,22 @@ function buildWeaponSection(kind: WeaponSoundKind): HTMLElement {
 
 const sfxRoot = document.querySelector<HTMLElement>('#sfx');
 if (sfxRoot) {
+  const copyAll = document.createElement('button');
+  copyAll.textContent = '⧉ COPY ALL CONFIGS';
+  copyAll.onclick = () => {
+    const selection = getSelection();
+    const all: Record<string, SfxPreset | undefined> = {};
+    for (const kind of Object.keys(SFX_PRESETS) as WeaponSoundKind[]) {
+      all[kind] = resolvePreset(selection[kind]);
+    }
+    void navigator.clipboard.writeText(JSON.stringify(all, null, 2)).then(() => {
+      copyAll.textContent = '✓ COPIED ALL';
+      setTimeout(() => {
+        copyAll.textContent = '⧉ COPY ALL CONFIGS';
+      }, 1200);
+    });
+  };
+  sfxRoot.appendChild(copyAll);
   for (const kind of Object.keys(SFX_PRESETS) as WeaponSoundKind[]) {
     sfxRoot.appendChild(buildWeaponSection(kind));
   }

@@ -33,6 +33,14 @@ function playHit(p: SfxPreset, time: number): void {
   oscGain.connect(env);
   osc.frequency.setValueAtTime(p.freqStart, time);
   osc.frequency.exponentialRampTo(Math.max(p.freqEnd, 1), p.sweepTime, time);
+  if (p.tailEnd) {
+    // doppler flyby — pitch falls away after the sweep completes
+    osc.frequency.exponentialRampTo(
+      Math.max(p.tailEnd, 1),
+      Math.max(p.duration - p.sweepTime, 0.05),
+      time + p.sweepTime,
+    );
+  }
   osc.start(time).stop(time + p.duration + 0.05);
 
   let noise: Tone.Noise | null = null;

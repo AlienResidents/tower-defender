@@ -41,6 +41,8 @@ export interface SfxPreset {
     /** seconds after the main hit */
     at: number;
   };
+  /** optional final pitch after the sweep — doppler flyby fall */
+  tailEnd?: number;
   /** optional low resonant body under the transient */
   body?: { osc: OscType; freq: number; decay: number; gain: number };
 }
@@ -53,28 +55,18 @@ export const SFX_PRESETS: Record<WeaponSoundKind, SfxPreset[]> = {
       id: 'rail.boom',
       name: 'Capacitor',
       osc: 'square',
-      freqStart: 900,
-      freqEnd: 300,
-      sweepTime: 0.03,
-      attack: 0.002,
-      noise: 0.5,
-      noiseFreq: 1400,
-      duration: 0.05,
-      gain: 0.4,
+      freqStart: 20,
+      freqEnd: 4000,
+      sweepTime: 0.075,
+      attack: 0.001,
+      noise: 1,
+      noiseFreq: 1550,
+      duration: 0.02,
+      gain: 1,
       hits: 1,
-      hitGap: 0,
-      charge: { osc: 'sawtooth', freqStart: 280, freqEnd: 1600, duration: 0.65, gain: 0.14 },
-      secondHit: {
-        osc: 'sine',
-        freqStart: 120,
-        freqEnd: 35,
-        duration: 0.18,
-        gain: 0.55,
-        noise: 0.5,
-        noiseFreq: 700,
-        at: 0.07,
-      },
-      body: { osc: 'sine', freq: 55, decay: 0.3, gain: 0.35 },
+      hitGap: 0.008,
+      charge: { osc: 'sawtooth', freqStart: 280, freqEnd: 1180, duration: 0.35, gain: 0.14 },
+      body: { osc: 'sine', freq: 58, decay: 1, gain: 1 },
     },
     {
       id: 'rail.crack',
@@ -195,6 +187,7 @@ export const SFX_PRESETS: Record<WeaponSoundKind, SfxPreset[]> = {
       gain: 0.34,
       hits: 1,
       hitGap: 0,
+      tailEnd: 280,
       body: { osc: 'sine', freq: 120, decay: 0.3, gain: 0.2 },
     },
     {
@@ -227,6 +220,7 @@ export const SFX_PRESETS: Record<WeaponSoundKind, SfxPreset[]> = {
       gain: 0.3,
       hits: 1,
       hitGap: 0,
+      tailEnd: 450,
       body: { osc: 'sine', freq: 200, decay: 0.28, gain: 0.15 },
     },
   ],
@@ -281,19 +275,20 @@ export const SFX_PRESETS: Record<WeaponSoundKind, SfxPreset[]> = {
   ],
   burst: [
     {
-      id: 'burst.rip',
-      name: 'Rip',
-      osc: 'square',
-      freqStart: 900,
-      freqEnd: 500,
+      id: 'burst.chugrip',
+      name: 'Chug-Rip',
+      osc: 'sine',
+      freqStart: 250,
+      freqEnd: 110,
       sweepTime: 0.02,
       attack: 0.002,
-      noise: 0.75,
-      noiseFreq: 1600,
-      duration: 0.05,
+      noise: 0.85,
+      noiseFreq: 1900,
+      duration: 0.045,
       gain: 0.3,
-      hits: 7,
-      hitGap: 0.022,
+      hits: 8,
+      hitGap: 0.02,
+      body: { osc: 'sine', freq: 90, decay: 0.05, gain: 0.25 },
     },
     {
       id: 'burst.chug',
@@ -384,7 +379,7 @@ export const DEFAULT_SELECTION: Record<WeaponSoundKind, string> = {
   beam: 'beam.pew',
   missile: 'missile.whoosh',
   chain: 'chain.crackle',
-  burst: 'burst.rip',
+  burst: 'burst.chug',
   splash: 'splash.boom',
 };
 
