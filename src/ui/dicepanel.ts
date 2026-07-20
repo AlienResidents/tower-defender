@@ -2,6 +2,7 @@ import { Container, Graphics, Text } from 'pixi.js';
 import { playDiceRoll } from '../audio/ambient';
 import type { TowerDef } from '../data/towers';
 import { DIE_SIDES, type Die, type DiceSystem } from '../game/dice';
+import { settings } from '../settings';
 
 /**
  * Purchase panel — the dice gamble UI (spec §8). Modal: commit tray dice,
@@ -324,31 +325,36 @@ export class DicePanel {
   update(dt: number): void {
     if (!this.container.visible) return;
     if (this.#rollSettling) {
+      const phys = settings.dice.physics;
       const floor = 430;
       const left = 40;
       const right = 620;
       let allSettled = true;
       for (const d of this.#rolling) {
         if (d.settled) continue;
-        d.vy += 1400 * dt;
+        d.vy += phys.gravity * dt;
         d.view.x += d.vx * dt;
         d.view.y += d.vy * dt;
         d.view.rotation += d.va * dt;
         if (d.view.y > floor) {
           d.view.y = floor;
-          d.vy *= -0.42;
-          d.vx *= 0.7;
-          d.va *= 0.6;
+          d.vy *= phys.floorBounce;
+          d.vx *= phys.floorFriction;
+          d.va *= phys.spinDamping;
         }
         if (d.view.x < left) {
           d.view.x = left;
-          d.vx *= -0.6;
+          d.vx *= phys.wallBounce;
         }
         if (d.view.x > right) {
           d.view.x = right;
-          d.vx *= -0.6;
+          d.vx *= phys.wallBounce;
         }
-        if (Math.abs(d.vy) < 40 && Math.abs(d.vx) < 30 && d.view.y >= floor - 1) {
+        if (
+          Math.abs(d.vy) < phys.settleVy &&
+          Math.abs(d.vx) < phys.settleVx &&
+          d.view.y >= floor - 1
+        ) {
           d.settled = true;
           d.view.rotation = 0;
           d.label.text = `${d.face}`;
@@ -360,7 +366,7 @@ export class DicePanel {
         this.#rollSettling = false;
         const after = this.#afterRoll;
         this.#afterRoll = null;
-        setTimeout(() => after?.(), 500);
+        setTimeout(() => after?.(), phys.settleHoldMs);
       }
     }
   }

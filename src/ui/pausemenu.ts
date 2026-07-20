@@ -1,6 +1,7 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { getMasterVolume, setMasterVolume } from '../audio/ambient';
 import { playWeaponSound } from '../audio/sfx';
+import { settings } from '../settings';
 
 /**
  * Pause menu (ESC/space). Letterbox bars, PAUSED centered in the top bar,
@@ -107,26 +108,25 @@ export class PauseMenu {
     volLabel.position.set(x, y - 48);
     this.container.addChild(volLabel);
 
+    // track-local geometry: rect lives at 0..240 so getLocalPosition maps 1:1
     const volTrack = new Graphics();
-    volTrack.rect(x - 120, y - 16, 240, 8).fill({ color: 0x16203a });
+    volTrack.position.set(x - 120, y - 16);
+    volTrack.rect(0, 0, 240, 8).fill({ color: 0x16203a });
     volTrack.eventMode = 'static';
     volTrack.cursor = 'pointer';
     volTrack.on('pointerdown', (e) => {
       e.stopPropagation();
-      const local = volTrack.toLocal(e.global);
-      this.#setVolume(Math.min(Math.max((local.x - (x - 120)) / 240, 0), 1), x, y);
+      const local = e.getLocalPosition(volTrack);
+      this.#setVolume(Math.min(Math.max(local.x / 240, 0), 1));
     });
     volTrack.on('wheel', (e) => {
       e.stopPropagation();
-      this.#setVolume(
-        Math.min(Math.max(getMasterVolume() - Math.sign(e.deltaY) * 0.05, 0), 1),
-        x,
-        y,
-      );
+      this.#setVolume(Math.min(Math.max(getMasterVolume() - Math.sign(e.deltaY) * 0.05, 0), 1));
     });
     this.container.addChild(volTrack);
 
     this.#volBar = new Graphics();
+    this.#volBar.position.set(x - 120, y - 16);
     this.container.addChild(this.#volBar);
     this.#volText = new Text({
       text: '',
@@ -135,7 +135,7 @@ export class PauseMenu {
     this.#volText.anchor.set(0.5);
     this.#volText.position.set(x, y + 8);
     this.container.addChild(this.#volText);
-    this.#renderVolume(x, y);
+    this.#renderVolume();
 
     const restart = menuButton('RESTART LEVEL', 0xffa63d, this.#actions.onRestart);
     restart.container.position.set(x, y + 66);
@@ -146,17 +146,17 @@ export class PauseMenu {
     this.container.addChild(quit.container);
   }
 
-  #setVolume(v: number, x: number, y: number): void {
+  #setVolume(v: number): void {
     setMasterVolume(v);
-    this.#renderVolume(x, y);
-    this.#auditionT = 0.4; // beep shortly after the slider stops moving
+    this.#renderVolume();
+    this.#auditionT = settings.ui.volumeAuditionDelaySeconds;
   }
 
-  #renderVolume(x: number, y: number): void {
+  #renderVolume(): void {
     const v = getMasterVolume();
     this.#volBar
       ?.clear()
-      .rect(x - 120, y - 16, 240 * v, 8)
+      .rect(0, 0, 240 * v, 8)
       .fill(0x00e5ff);
     if (this.#volText) this.#volText.text = `${Math.round(v * 100)}%`;
   }

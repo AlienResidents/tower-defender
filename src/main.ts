@@ -21,6 +21,8 @@ import { PauseMenu } from './ui/pausemenu';
 import { showTitleCard } from './ui/titlecard';
 import { buildCity } from './world/city';
 import { computeCityLayout, makeSurfaceMap } from './world/city-layout';
+import { dumpInputLog, recordInput } from './dev/inputlog';
+import { settings } from './settings';
 
 /**
  * M2 core loop — towers on rooftops, waves on the street, win/lose.
@@ -293,8 +295,9 @@ app.stage.on('pointermove', (event) => {
   refreshGhost(p.x, p.y);
 });
 app.stage.on('pointerdown', (event) => {
-  if (dicePanel.isOpen) return; // modal owns clicks while open
   const p = scene.toLocal(event.global);
+  recordInput('pointerdown', `${Math.round(p.x)},${Math.round(p.y)}`);
+  if (dicePanel.isOpen) return; // modal owns clicks while open
   if (pendingItem) {
     // socket the picked item onto the clicked tower
     const tower = run.towers.find((t) => Math.hypot(t.x - p.x, t.y - p.y) < 18);
@@ -359,13 +362,14 @@ scene.addChild(toast);
 let toastT = 0;
 function showToast(text: string): void {
   toast.text = text;
-  toastT = 2;
+  toastT = settings.ui.toastSeconds;
 }
 fitScene();
 app.renderer.on('resize', fitScene);
 
 // --- input ---
 window.addEventListener('keydown', (event) => {
+  recordInput('key', event.key);
   if (event.key === ' ') {
     if (pauseMenu.isOpen) closePauseMenu();
     else openPauseMenu();
@@ -387,6 +391,12 @@ window.addEventListener('keydown', (event) => {
     // dev-mode: copy the run summary to clipboard
     void navigator.clipboard.writeText(JSON.stringify(run.buildRunSummary(SEED), null, 2));
     showToast('STATS COPIED ✓');
+  }
+  if (event.key === 'i' || event.key === 'I') {
+    // dev-mode: dump the recorded input log (settings.input.record)
+    const dump = dumpInputLog();
+    void navigator.clipboard.writeText(dump.json);
+    showToast(`INPUT LOG COPIED ✓ (${dump.count} events)`);
   }
   if (event.key === 'n' && run.phase === 'won') {
     // next shift = next seed (map = seed until the campaign picker exists)

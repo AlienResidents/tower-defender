@@ -9,6 +9,7 @@ import { applyDamage } from './combat';
 import { DiceSystem } from './dice';
 import { dropMultiplier } from './economy';
 import { WaveSpawner } from './spawner';
+import { settings } from '../settings';
 
 /**
  * Run — the complete game state of one shift. Pure logic, zero rendering:
@@ -72,7 +73,7 @@ export type RunEvent =
   | { type: 'phase'; phase: Phase; wave: number };
 
 const STARTING_LIVES = 20;
-const STARTING_PALLADIUM = 500;
+const STARTING_PALLADIUM = settings.economy.startingPalladium;
 
 interface ActiveSpawner {
   spawner: WaveSpawner;

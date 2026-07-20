@@ -1,5 +1,6 @@
 import type { Rng } from '../core/rng';
 import type { TowerDef } from '../data/towers';
+import { settings } from '../settings';
 
 /**
  * The dice economy (spec §8). Pure logic, seeded rolls.
@@ -15,21 +16,13 @@ import type { TowerDef } from '../data/towers';
 export const DIE_SIDES = [3, 6, 8, 10, 12, 20, 100] as const;
 
 /** Palladium recharge cost per die type — spec §8 ratio table. */
-export const RECHARGE_COST: Readonly<Record<number, number>> = {
-  100: 100, // 1:1
-  20: 100, // 5:1
-  12: 108, // 9:1
-  10: 120, // 12:1
-  8: 128, // 16:1
-  6: 132, // 22:1
-  3: 135, // 45:1
-};
+export const RECHARGE_COST: Readonly<Record<number, number>> = settings.economy.rechargeCost;
 
 /** Fraction of recharge cost returned as salvage on bust/abandon. */
-export const SALVAGE_RATE = 0.22;
+export const SALVAGE_RATE = settings.economy.salvageRate;
 
-const STARTING_SLOTS = 6;
-const STARTING_CHANCES = 3;
+const STARTING_SLOTS: number = settings.dice.startingSlots;
+const STARTING_CHANCES: number = settings.dice.startingChances;
 
 export interface Die {
   id: number;

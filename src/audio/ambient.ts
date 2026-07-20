@@ -1,4 +1,5 @@
 import * as Tone from 'tone';
+import { settings } from '../settings';
 
 /**
  * Ambient synth bed — moody generative synth-ambient (spec §6).
@@ -11,7 +12,7 @@ let started = false;
 let master: Tone.Gain | null = null;
 let muted = false;
 
-const MASTER_LEVEL = 0.9;
+const MASTER_LEVEL = settings.audio.masterLevel;
 const VOLUME_KEY = 'phosphor.volume';
 let masterVolume = loadVolume();
 
@@ -19,9 +20,9 @@ function loadVolume(): number {
   try {
     const raw = localStorage.getItem(VOLUME_KEY);
     const v = raw ? Number(raw) : NaN;
-    return Number.isFinite(v) && v >= 0 && v <= 1 ? v : MASTER_LEVEL;
+    return Number.isFinite(v) && v >= 0 && v <= 1 ? v : settings.audio.defaultVolume;
   } catch {
-    return MASTER_LEVEL;
+    return settings.audio.defaultVolume;
   }
 }
 
