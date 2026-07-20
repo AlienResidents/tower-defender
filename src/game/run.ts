@@ -61,7 +61,7 @@ export type RunEvent =
   | { type: 'phase'; phase: Phase; wave: number };
 
 const STARTING_LIVES = 20;
-const STARTING_PALLADIUM = 100;
+const STARTING_PALLADIUM = 500;
 
 interface ActiveSpawner {
   spawner: WaveSpawner;
