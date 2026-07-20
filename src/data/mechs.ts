@@ -35,6 +35,8 @@ export const PART_SCHEMAS: Record<MechPartType, SliderDef[]> = {
     { key: 'w', label: 'width', min: 14, max: 64, step: 1 },
     { key: 'h', label: 'height', min: 8, max: 40, step: 1 },
     { key: 'shape', label: 'shape 0=box 1=hex 2=wedge', min: 0, max: 2, step: 1 },
+    { key: 'finish', label: 'finish 0=clean 1=paneled 2=hazard 3=worn', min: 0, max: 3, step: 1 },
+    { key: 'detail', label: 'detail density', min: 0, max: 100, step: 5 },
   ],
   legs: [
     { key: 'count', label: 'legs (2/4/6)', min: 2, max: 6, step: 2 },
@@ -68,7 +70,7 @@ export const MECH_DEFAULTS: Record<string, MechSpec> = {
     name: 'SCAV WALKER',
     parts: [
       part('legs', { count: 2, len: 14, spread: 10 }),
-      part('torso', { w: 22, h: 14, shape: 0 }),
+      part('torso', { w: 22, h: 14, shape: 0, finish: 3, detail: 40 }),
       part('head', { size: 5, shape: 0 }),
       part('core', { size: 3 }),
     ],
@@ -78,7 +80,7 @@ export const MECH_DEFAULTS: Record<string, MechSpec> = {
     name: 'SKIMMER',
     parts: [
       part('legs', { count: 2, len: 18, spread: 8 }),
-      part('torso', { w: 18, h: 10, shape: 2 }),
+      part('torso', { w: 18, h: 10, shape: 2, finish: 0, detail: 10 }),
       part('head', { size: 4, shape: 1 }),
     ],
   },
@@ -87,7 +89,7 @@ export const MECH_DEFAULTS: Record<string, MechSpec> = {
     name: 'BULWARK HAULER',
     parts: [
       part('legs', { count: 4, len: 16, spread: 22 }),
-      part('torso', { w: 44, h: 24, shape: 0 }),
+      part('torso', { w: 44, h: 24, shape: 0, finish: 2, detail: 60 }),
       part('core', { size: 6 }),
       part('weapon', { len: 14, w: 4, side: 0 }),
     ],
@@ -97,7 +99,7 @@ export const MECH_DEFAULTS: Record<string, MechSpec> = {
     name: 'AEGIS CARRIER',
     parts: [
       part('legs', { count: 4, len: 15, spread: 18 }),
-      part('torso', { w: 30, h: 18, shape: 1 }),
+      part('torso', { w: 30, h: 18, shape: 1, finish: 1, detail: 50 }),
       part('head', { size: 5, shape: 0 }),
       part('shield', { radius: 34, alpha: 22 }),
     ],
@@ -107,7 +109,7 @@ export const MECH_DEFAULTS: Record<string, MechSpec> = {
     name: 'MENDER SPIDER',
     parts: [
       part('legs', { count: 6, len: 12, spread: 20 }),
-      part('torso', { w: 20, h: 12, shape: 1 }),
+      part('torso', { w: 20, h: 12, shape: 1, finish: 3, detail: 30 }),
       part('head', { size: 4, shape: 2 }),
       part('core', { size: 3 }),
     ],
@@ -117,7 +119,7 @@ export const MECH_DEFAULTS: Record<string, MechSpec> = {
     name: 'SIEGE PLATFORM',
     parts: [
       part('legs', { count: 6, len: 22, spread: 30 }),
-      part('torso', { w: 56, h: 30, shape: 2 }),
+      part('torso', { w: 56, h: 30, shape: 2, finish: 1, detail: 80 }),
       part('head', { size: 8, shape: 0 }),
       part('weapon', { len: 26, w: 6, side: 2 }),
       part('core', { size: 8 }),
