@@ -59,7 +59,7 @@ export function buildMechLab(): HTMLElement {
   // --- state ---
   let spec: MechSpec = structuredClone(MECH_DEFAULTS.walker);
   let selectedId: string | null = null;
-  let phase: 0 | 1 = 0;
+  let frame = 0;
 
   const ctx = canvas.getContext('2d');
   if (!ctx) return root;
@@ -77,7 +77,7 @@ export function buildMechLab(): HTMLElement {
     ctx.clearRect(0, 0, 192, 192);
     ctx.save();
     ctx.scale(2, 2); // render at 2× for visibility
-    drawMech(ctx, spec, phase);
+    drawMech(ctx, spec, frame);
     ctx.restore();
   }
 
@@ -231,11 +231,11 @@ export function buildMechLab(): HTMLElement {
   renderPalette();
   renderAll();
 
-  // walk animation
+  // walk animation — 4-frame cycle
   setInterval(() => {
-    phase = phase === 0 ? 1 : 0;
+    frame = (frame + 1) % 4;
     redraw();
-  }, 180);
+  }, 120);
 
   return root;
 }
