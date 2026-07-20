@@ -231,7 +231,7 @@ function refreshHud(): void {
     audioState === 'off' ? '[click] audio on' : audioState === 'muted' ? 'MUTED' : 'AUDIO ON';
   hud.text =
     `SHIFT 01 · SEED ${SEED} · TIME ${clock.scale}x · RAIN ${rainLabel} · ${audioLabel} · ` +
-    `[a] auto ${autoSend ? 'ON' : 'off'} · [space] pause · [1/2/4] speed · [m] mute`;
+    `[a] auto ${autoSend ? 'ON' : 'off'} · [c] stats · [space] pause · [1/2/4] speed · [m] mute`;
 }
 refreshHud();
 scene.addChild(hud);
@@ -268,6 +268,10 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') run.startWave();
   if (event.key === 'a' || event.key === 'A') {
     autoSend = !autoSend;
+  }
+  if (event.key === 'c' || event.key === 'C') {
+    // dev-mode: copy the run summary to clipboard
+    void navigator.clipboard.writeText(JSON.stringify(run.buildRunSummary(SEED), null, 2));
   }
   if (event.key === 'Escape') {
     if (dicePanel.isOpen) {

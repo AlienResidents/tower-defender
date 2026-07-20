@@ -67,6 +67,17 @@ export class DiceSystem {
   chances = STARTING_CHANCES;
   purchase: Purchase | null = null;
 
+  /** Lifetime counters for the run summary. */
+  readonly stats = {
+    salvageEarned: 0,
+    diceBought: 0,
+    slotsBought: 0,
+    chancesBought: 0,
+    success: 0,
+    bust: 0,
+    abandoned: 0,
+  };
+
   #uid = 1;
   #rng: Rng;
   #wallet: Wallet;
@@ -100,18 +111,21 @@ export class DiceSystem {
     if (this.tray.length >= this.slots) return false;
     if (!this.#wallet.spend(this.rechargeCost(sides))) return false;
     this.tray.push({ id: this.#uid++, sides });
+    this.stats.diceBought++;
     return true;
   }
 
   buySlot(): boolean {
     if (!this.#wallet.spend(this.slotCost())) return false;
     this.slots++;
+    this.stats.slotsBought++;
     return true;
   }
 
   buyChance(): boolean {
     if (!this.#wallet.spend(this.chanceCost())) return false;
     this.chances++;
+    this.stats.chancesBought++;
     return true;
   }
 
@@ -176,12 +190,14 @@ export class DiceSystem {
 
     if (p.total >= p.def.price) {
       p.status = 'success';
+      this.stats.success++;
       this.#finish();
       return { faces, total: p.total, status: 'success' };
     }
     p.chancesLeft--;
     if (p.chancesLeft <= 0) {
       p.status = 'bust';
+      this.stats.bust++;
       this.#salvageCommitted(p);
       this.#finish();
       return { faces, total: p.total, status: 'bust' };
@@ -194,12 +210,17 @@ export class DiceSystem {
     const p = this.purchase;
     if (!p) return;
     p.status = 'abandoned';
+    this.stats.abandoned++;
     this.#salvageCommitted(p);
     this.#finish();
   }
 
   #salvageCommitted(p: Purchase): void {
-    for (const die of p.committed) this.salvage += salvageValue(die);
+    for (const die of p.committed) {
+      const value = salvageValue(die);
+      this.salvage += value;
+      this.stats.salvageEarned += value;
+    }
     p.committed = [];
   }
 

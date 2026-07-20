@@ -101,6 +101,23 @@ describe('Run', () => {
     expect(run.palladium).toBeGreaterThan(0);
   });
 
+  it('tracks run summary stats and log', () => {
+    const run = makeRun();
+    run.placeTower(towerById('railgun'), 500, 0);
+    run.startWave();
+    step(run, 30);
+    const summary = run.buildRunSummary(1337) as {
+      kills: Record<string, number>;
+      palladium: { earned: number };
+      towersPlaced: Record<string, number>;
+      recentEvents: string[];
+    };
+    expect(summary.kills.walker).toBeGreaterThan(0);
+    expect(summary.palladium.earned).toBeGreaterThan(0);
+    expect(summary.towersPlaced.railgun).toBe(1);
+    expect(summary.recentEvents.length).toBeGreaterThan(0);
+  });
+
   it('wins after clearing wave 15', () => {
     const run = makeRun();
     const superTower: TowerDef = {

@@ -77,6 +77,17 @@ export class Run {
   readonly towers: TowerState[] = [];
   readonly projectiles: ProjectileState[] = [];
 
+  /** Run-summary counters + recent-events log (dev-mode copyout). */
+  readonly stats = {
+    kills: new Map<string, number>(),
+    leaked: new Map<string, number>(),
+    palladiumEarned: 0,
+    palladiumSpent: 0,
+    towersPlaced: new Map<string, number>(),
+  };
+  readonly log: string[] = [];
+  #combatT = 0;
+
   #path: Path;
   #spawners: ActiveSpawner[] = [];
   #uid = 1;
@@ -92,6 +103,7 @@ export class Run {
       spend: (amount) => {
         if (this.palladium < amount) return false;
         this.palladium -= amount;
+        this.stats.palladiumSpent += amount;
         return true;
       },
       credit: (amount) => {
@@ -120,6 +132,11 @@ export class Run {
     return dropMultiplier(this.activeWaveCount());
   }
 
+  #logEvent(text: string): void {
+    this.log.push(`[w${this.wave} ${this.#combatT.toFixed(0)}s] ${text}`);
+    if (this.log.length > 40) this.log.shift(); // tail only
+  }
+
   placeTower(def: TowerDef, x: number, y: number): TowerState {
     const tower: TowerState = {
       uid: this.#uid++,
@@ -131,6 +148,8 @@ export class Run {
       reloadT: 0,
     };
     this.towers.push(tower);
+    this.stats.towersPlaced.set(def.id, (this.stats.towersPlaced.get(def.id) ?? 0) + 1);
+    this.#logEvent(`tower placed: ${def.name} @ ${Math.round(x)},${Math.round(y)}`);
     return tower;
   }
 
@@ -139,6 +158,7 @@ export class Run {
     if (this.phase === 'won' || this.phase === 'lost' || this.wave >= WAVES.length) return;
     this.wave++;
     this.#spawners.push({ spawner: new WaveSpawner(WAVES[this.wave - 1]), waveNo: this.wave });
+    this.#logEvent(`wave ${this.wave} sent (${this.activeWaveCount()} active)`);
     if (this.phase === 'build') {
       this.phase = 'wave';
       this.#emit({ type: 'phase', phase: this.phase, wave: this.wave });
@@ -176,6 +196,8 @@ export class Run {
       const dropMult = this.currentMult();
       const amount = enemy.def.drop * dropMult;
       this.palladium += amount;
+      this.stats.palladiumEarned += amount;
+      this.stats.kills.set(enemy.def.id, (this.stats.kills.get(enemy.def.id) ?? 0) + 1);
       this.#emit({ type: 'drop', enemy, amount, mult: dropMult });
       this.#emit({ type: 'death', enemy });
     }
@@ -285,6 +307,7 @@ export class Run {
 
   update(dt: number): void {
     if (this.phase !== 'wave') return;
+    this.#combatT += dt;
     for (const s of this.#spawners) {
       s.spawner.update(dt, (id) => this.#spawn(id, s.waveNo));
     }
@@ -299,6 +322,8 @@ export class Run {
       if (e.dist >= this.#path.totalLength) {
         e.alive = false;
         this.lives -= e.def.cores;
+        this.stats.leaked.set(e.def.id, (this.stats.leaked.get(e.def.id) ?? 0) + 1);
+        this.#logEvent(`LEAK: ${e.def.name} (-${e.def.cores} cores, ${this.lives} left)`);
         this.#emit({ type: 'leak', enemy: e });
         if (this.lives <= 0) {
           this.lives = 0;
@@ -315,5 +340,34 @@ export class Run {
       if (this.wave >= WAVES.length) this.#setPhase('won');
       else this.#setPhase('build');
     }
+  }
+
+  /** Dev-mode run summary for clipboard copyout. */
+  buildRunSummary(seed: number): Record<string, unknown> {
+    const d = this.dice;
+    return {
+      seed,
+      outcome: this.phase,
+      wave: `${this.wave}/${WAVES.length}`,
+      livesRemaining: this.lives,
+      combatSeconds: Math.round(this.#combatT),
+      kills: Object.fromEntries(this.stats.kills),
+      leaked: Object.fromEntries(this.stats.leaked),
+      palladium: {
+        balance: Math.floor(this.palladium),
+        earned: Math.floor(this.stats.palladiumEarned),
+        spent: this.stats.palladiumSpent,
+      },
+      salvage: { balance: Math.floor(d.salvage), earned: Math.floor(d.stats.salvageEarned) },
+      dice: {
+        tray: d.tray.map((x) => x.sides),
+        bought: d.stats.diceBought,
+        slots: d.slots,
+        chances: d.chances,
+      },
+      purchases: { success: d.stats.success, bust: d.stats.bust, abandoned: d.stats.abandoned },
+      towersPlaced: Object.fromEntries(this.stats.towersPlaced),
+      recentEvents: this.log,
+    };
   }
 }
