@@ -23,6 +23,8 @@ import { buildCity } from './world/city';
 import { computeCityLayout, makeSurfaceMap } from './world/city-layout';
 import { dumpInputLog, recordInput } from './dev/inputlog';
 import { settings } from './settings';
+import { loadMeta, saveMeta } from './game/meta';
+import { itemById } from './data/items';
 
 /**
  * M2 core loop — towers on rooftops, waves on the street, win/lose.
@@ -30,7 +32,11 @@ import { settings } from './settings';
  */
 
 const params = new URLSearchParams(location.search);
-const SEED = parseInt(params.get('seed') ?? '1337', 10) || 1337;
+// --- campaign meta: palladium / shift / stash persist across shifts ---
+const meta = loadMeta();
+const SEED = params.get('seed')
+  ? parseInt(params.get('seed') ?? '1337', 10) || 1337
+  : 1336 + meta.shift; // no explicit seed — resume the campaign
 const SHIFT_NO = SEED - 1336;
 const SHIFT_LABEL = `SHIFT ${String(SHIFT_NO).padStart(2, '0')}`;
 
@@ -115,7 +121,7 @@ traffic.container.zIndex = 14;
 if (rain) rain.container.zIndex = 16;
 
 // --- game: run state + views + build bar + dice panel ---
-const run = new Run(layout.path, rng);
+const run = new Run(layout.path, rng, { startingPalladium: meta.palladium });
 const runView = new RunView(run, clock);
 runView.container.zIndex = 8;
 scene.addChild(runView.container);
@@ -175,9 +181,25 @@ function openNextDrop(): void {
   const d = dropQueue.shift();
   if (!d) return;
   itemModal.open(d.items, d.roll, DESIGN_W / 2, DESIGN_H / 2 - 40, (item) => {
+    if (item) {
+      meta.stash.push(item.id); // picked items enter the persistent stash
+      saveMeta(meta);
+    }
     pendingItem = item; // null = discarded; otherwise awaiting tower click
     openNextDrop();
   });
+}
+
+// offer the persisted stash once at boot — pick to socket, ESC keeps it stashed
+if (meta.stash.length > 0) {
+  const defs = meta.stash
+    .map((id) => itemById(id))
+    .filter((d): d is NonNullable<typeof d> => d !== undefined);
+  if (defs.length > 0) {
+    itemModal.open(defs, defs.length, DESIGN_W / 2, DESIGN_H / 2 - 40, (item) => {
+      pendingItem = item; // already in the stash — no re-push
+    });
+  }
 }
 
 run.on((e) => {
@@ -256,15 +278,17 @@ function refreshGhost(x: number, y: number): void {
 function statusText(): string {
   const waves = run.activeWaveCount();
   const multText = waves > 1 ? ` · ×${run.currentMult().toFixed(1)} (${waves} waves)` : '';
-  const hint =
-    run.phase === 'build'
+  const hint = pendingItem
+    ? `click a tower to socket ${pendingItem.name}`
+    : run.phase === 'build'
       ? '[enter] send wave'
       : run.phase === 'wave'
         ? `[enter] send early ×${dropMultiplier(waves + 1).toFixed(1)}`
         : run.phase === 'won'
           ? '[n] next shift'
           : '';
-  return `LIVES ${run.lives} · WAVE ${run.wave}/${WAVES.length} · Pd ${Math.floor(run.palladium)} · Sv ${Math.floor(run.dice.salvage)}${multText} · ${hint}`;
+  const stashText = meta.stash.length > 0 ? ` · stash ${meta.stash.length}` : '';
+  return `LIVES ${run.lives} · WAVE ${run.wave}/${WAVES.length} · Pd ${Math.floor(run.palladium)} · Sv ${Math.floor(run.dice.salvage)}${stashText}${multText} · ${hint}`;
 }
 
 run.on((e) => {
@@ -273,6 +297,13 @@ run.on((e) => {
     run.startWave(); // auto-send on clear
   }
   if (e.phase === 'won' || e.phase === 'lost') {
+    // persist the campaign: salvage refines on a win, shift advances
+    if (e.phase === 'won') {
+      run.dice.refineSalvage();
+      meta.shift = SHIFT_NO + 1;
+    }
+    meta.palladium = run.palladium;
+    saveMeta(meta);
     const endCard = showTitleCard(
       DESIGN_W,
       DESIGN_H,
@@ -301,8 +332,10 @@ app.stage.on('pointerdown', (event) => {
   if (pendingItem) {
     // socket the picked item onto the clicked tower
     const tower = run.towers.find((t) => Math.hypot(t.x - p.x, t.y - p.y) < 18);
-    if (tower) {
-      run.applyItem(tower.uid, pendingItem);
+    if (tower && run.applyItem(tower.uid, pendingItem)) {
+      const stashIdx = meta.stash.indexOf(pendingItem.id);
+      if (stashIdx >= 0) meta.stash.splice(stashIdx, 1); // socketed — leaves the stash
+      saveMeta(meta);
       pendingItem = null;
     }
     return;
@@ -399,8 +432,8 @@ window.addEventListener('keydown', (event) => {
     showToast(`INPUT LOG COPIED ✓ (${dump.count} events)`);
   }
   if (event.key === 'n' && run.phase === 'won') {
-    // next shift = next seed (map = seed until the campaign picker exists)
-    location.search = `?seed=${SEED + 1}`;
+    // next shift: meta already saved with the advance — boot resumes there
+    location.href = location.pathname;
   }
   if (event.key === 'Escape') {
     if (dicePanel.isOpen) {

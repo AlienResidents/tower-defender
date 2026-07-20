@@ -1,4 +1,4 @@
-import { Container, Graphics, Text } from 'pixi.js';
+import { Container, Graphics, Rectangle, Text } from 'pixi.js';
 import { getMasterVolume, setMasterVolume } from '../audio/ambient';
 import { playWeaponSound } from '../audio/sfx';
 import { settings } from '../settings';
@@ -57,8 +57,15 @@ export class PauseMenu {
     this.#auditionT -= dt;
     if (this.#auditionT <= 0) {
       this.#auditionT = -1;
-      // let the user hear the new level before resuming
-      playWeaponSound('beam');
+      // fire OUTSIDE the ticker, exception-wrapped: a Tone throw inside the
+      // ticker callback kills pixi's RAF loop and freezes all rendering
+      setTimeout(() => {
+        try {
+          playWeaponSound('beam');
+        } catch {
+          // audio not ready — skip the audition
+        }
+      }, 0);
     }
   }
 
@@ -108,12 +115,15 @@ export class PauseMenu {
     volLabel.position.set(x, y - 48);
     this.container.addChild(volLabel);
 
-    // track-local geometry: rect lives at 0..240 so getLocalPosition maps 1:1
+    // track-local geometry: rect lives at 0..240 so getLocalPosition maps 1:1.
+    // The bar is visually 8px tall but the hit zone is fat — thin sliders are
+    // unclickable at render scale; miss-by-3px swallowed clicks as "broken".
     const volTrack = new Graphics();
     volTrack.position.set(x - 120, y - 16);
     volTrack.rect(0, 0, 240, 8).fill({ color: 0x16203a });
     volTrack.eventMode = 'static';
     volTrack.cursor = 'pointer';
+    volTrack.hitArea = new Rectangle(-12, -14, 264, 36);
     volTrack.on('pointerdown', (e) => {
       e.stopPropagation();
       const local = e.getLocalPosition(volTrack);

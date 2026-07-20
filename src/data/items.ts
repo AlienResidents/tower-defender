@@ -38,3 +38,7 @@ export const ITEMS: readonly ItemDef[] = [
 ] as const;
 
 export const MAX_ITEMS_PER_TOWER = 2;
+
+export function itemById(id: string): ItemDef | undefined {
+  return ITEMS.find((i) => i.id === id);
+}

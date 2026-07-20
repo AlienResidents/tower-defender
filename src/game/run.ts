@@ -84,7 +84,7 @@ export class Run {
   phase: Phase = 'build';
   wave = 0;
   lives = STARTING_LIVES;
-  palladium = STARTING_PALLADIUM;
+  palladium: number = STARTING_PALLADIUM;
   readonly enemies: EnemyState[] = [];
   readonly towers: TowerState[] = [];
   readonly projectiles: ProjectileState[] = [];
@@ -109,7 +109,7 @@ export class Run {
   /** The dice economy — tray, purchases, recharges (spec §8). */
   readonly dice: DiceSystem;
 
-  constructor(path: Path, rng: Rng) {
+  constructor(path: Path, rng: Rng, opts?: { startingPalladium?: number }) {
     this.#path = path;
     this.#rng = rng;
     this.dice = new DiceSystem(rng, {
@@ -124,6 +124,7 @@ export class Run {
         this.palladium += amount;
       },
     });
+    if (opts?.startingPalladium !== undefined) this.palladium = opts.startingPalladium;
   }
 
   on(fn: (e: RunEvent) => void): void {
