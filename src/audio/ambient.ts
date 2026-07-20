@@ -54,7 +54,10 @@ export function resumeMusic(): void {
 }
 
 function buildBed(): Tone.Gain {
-  const out = new Tone.Gain(MASTER_LEVEL).toDestination();
+  const out = new Tone.Gain(MASTER_LEVEL);
+  // limiter keeps heavy SFX moments (4x speed, full tower rows) from clipping
+  const limiter = new Tone.Limiter(-2).toDestination();
+  out.connect(limiter);
   buildRain(out);
   buildCityLife(out);
   buildMusic(out);

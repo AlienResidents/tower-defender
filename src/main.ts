@@ -102,7 +102,7 @@ if (rain) scene.addChild(rain.container);
 
 // --- game: run state + views + build bar + dice panel ---
 const run = new Run(layout.path, rng);
-const runView = new RunView(run);
+const runView = new RunView(run, clock);
 scene.addChild(runView.container);
 const buildBar = new BuildBar(DESIGN_W, DESIGN_H - 44);
 scene.addChild(buildBar.container);

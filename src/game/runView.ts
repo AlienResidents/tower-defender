@@ -1,5 +1,6 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
 import { playWeaponSound } from '../audio/sfx';
+import type { Clock } from '../core/clock';
 import type { WeaponSoundKind } from '../data/sfx';
 import type { EnemyState, Run, RunEvent, TowerState } from '../game/run';
 import { makeMechTexture, makeSoftDiscTexture } from '../render/textures';
@@ -15,6 +16,7 @@ interface Flash {
 export class RunView {
   readonly container = new Container();
   #run: Run;
+  #clock: Clock;
   #enemyViews = new Map<number, Container>();
   #hpBars = new Map<number, { bar: Graphics; yOff: number }>();
   #towerViews = new Map<number, Container>();
@@ -23,8 +25,9 @@ export class RunView {
   #mechTex = makeMechTexture();
   #glowTex = makeSoftDiscTexture();
 
-  constructor(run: Run) {
+  constructor(run: Run, clock: Clock) {
     this.#run = run;
+    this.#clock = clock;
     run.on((e) => this.#handle(e));
   }
 
@@ -45,11 +48,11 @@ export class RunView {
         this.#removeEnemy(e.enemy, false);
         break;
       case 'fire':
-        playWeaponSound(e.tower.def.kind as WeaponSoundKind);
+        playWeaponSound(e.tower.def.kind as WeaponSoundKind, this.#clock.scale);
         this.#fireFlash(e.tower, e.target);
         break;
       case 'splash':
-        playWeaponSound('splash');
+        playWeaponSound('splash', this.#clock.scale);
         this.#puff(e.x, e.y, e.radius / 128, 0xffa63d);
         break;
     }
