@@ -24,7 +24,9 @@ import { computeCityLayout, makeSurfaceMap } from './world/city-layout';
 import { dumpInputLog, recordInput } from './dev/inputlog';
 import { settings } from './settings';
 import { loadMeta, saveMeta } from './game/meta';
-import { itemById } from './data/items';
+import { itemById, MAX_ITEMS_PER_TOWER } from './data/items';
+import { salvageValue } from './ui/itemmodal';
+import { TowerPanel } from './ui/towerpanel';
 
 /**
  * M2 core loop — towers on rooftops, waves on the street, win/lose.
@@ -180,6 +182,10 @@ const pauseMenu = new PauseMenu(
 pauseMenu.container.zIndex = 85;
 scene.addChild(pauseMenu.container);
 
+const towerPanel = new TowerPanel();
+towerPanel.container.zIndex = 88;
+scene.addChild(towerPanel.container);
+
 // elite drops queue — a second elite kill never wipes an open picker
 const dropQueue: { items: import('./data/items').ItemDef[]; roll: number }[] = [];
 function openNextDrop(): void {
@@ -190,6 +196,11 @@ function openNextDrop(): void {
     if (item) {
       meta.stash.push(item.id); // picked items enter the persistent stash
       saveMeta(meta);
+    } else {
+      // discarded the whole pool — salvage it (Σ power × unit, scales with d4)
+      const sv = salvageValue(d.items);
+      run.dice.addSalvage(sv);
+      showToast(`SALVAGED +${sv} Sv`);
     }
     pendingItem = item; // null = discarded; otherwise awaiting tower click
     openNextDrop();
@@ -335,17 +346,40 @@ app.stage.on('pointerdown', (event) => {
   const p = scene.toLocal(event.global);
   recordInput('pointerdown', `${Math.round(p.x)},${Math.round(p.y)}`);
   if (dicePanel.isOpen) return; // modal owns clicks while open
+  const clickedTower = run.towers.find((t) => Math.hypot(t.x - p.x, t.y - p.y) < 18);
   if (pendingItem) {
-    // socket the picked item onto the clicked tower
-    const tower = run.towers.find((t) => Math.hypot(t.x - p.x, t.y - p.y) < 18);
-    if (tower && run.applyItem(tower.uid, pendingItem)) {
-      const stashIdx = meta.stash.indexOf(pendingItem.id);
-      if (stashIdx >= 0) meta.stash.splice(stashIdx, 1); // socketed — leaves the stash
-      saveMeta(meta);
-      pendingItem = null;
+    if (clickedTower) {
+      if (clickedTower.items.length >= MAX_ITEMS_PER_TOWER) {
+        const swapping = pendingItem; // narrowed non-null for the closure
+        towerPanel.open(clickedTower, {
+          pendingItem: swapping,
+          onReplace: (index) => {
+            const replaced = run.replaceItem(clickedTower.uid, index, swapping);
+            if (replaced) {
+              const stashIdx = meta.stash.indexOf(swapping.id);
+              if (stashIdx >= 0) meta.stash.splice(stashIdx, 1);
+              saveMeta(meta);
+              run.dice.addSalvage(settings.economy.usedItemSalvage); // used → flat rate
+              showToast(`${replaced.name} SALVAGED +${settings.economy.usedItemSalvage} Sv`);
+              pendingItem = null;
+              towerPanel.close();
+            }
+          },
+        });
+      } else if (run.applyItem(clickedTower.uid, pendingItem)) {
+        const stashIdx = meta.stash.indexOf(pendingItem.id);
+        if (stashIdx >= 0) meta.stash.splice(stashIdx, 1); // socketed — leaves the stash
+        saveMeta(meta);
+        pendingItem = null;
+      }
     }
     return;
   }
+  if (clickedTower) {
+    towerPanel.open(clickedTower, { pendingItem: null, onReplace: () => {} });
+    return;
+  }
+  towerPanel.close();
   if (!selected) return;
   const slot = nearestSlot(layout, p);
   if (slot && !isOccupied(slot, run.towers)) {
@@ -451,6 +485,8 @@ window.addEventListener('keydown', (event) => {
       pendingItem = null;
     } else if (pauseMenu.isOpen) {
       closePauseMenu();
+    } else if (towerPanel.isOpen) {
+      towerPanel.close();
     } else if (selected) {
       selected = null;
       buildBar.setSelected(null);

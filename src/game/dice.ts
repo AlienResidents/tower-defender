@@ -122,8 +122,14 @@ export class DiceSystem {
     return true;
   }
 
+  /** Credit salvage directly (item discards, used-item swaps). */
+  addSalvage(amount: number): void {
+    this.salvage += amount;
+    this.stats.salvageEarned += amount;
+  }
+
   refineSalvage(): void {
-    this.#wallet.credit(Math.floor(this.salvage));
+    this.#wallet.credit(Math.floor(this.salvage * settings.economy.salvageRefineRate));
     this.salvage = 0;
   }
 

@@ -26,15 +26,35 @@ export interface ItemDef {
   name: string;
   desc: string;
   mods: Partial<TowerMods>;
+  /** Salvage tier — discard salvage = Σ pool power × settings.economy.itemSalvageUnit. */
+  power: number;
 }
 
 export const ITEMS: readonly ItemDef[] = [
-  { id: 'amp', name: 'AMP ROUNDS', desc: '+25% damage', mods: { damage: 0.25 } },
-  { id: 'scope', name: 'TARGETING SCOPE', desc: '+20% range', mods: { range: 0.2 } },
-  { id: 'overclock', name: 'OVERCLOCK CORE', desc: '+25% fire rate', mods: { rate: 0.25 } },
-  { id: 'payload', name: 'PAYLOAD BAY', desc: '+30% splash/chain range', mods: { aux: 0.3 } },
-  { id: 'drum', name: 'EXTENDED DRUM', desc: '+6 burst rounds', mods: { burst: 6 } },
-  { id: 'coolant', name: 'COOLANT LOOP', desc: '-35% reload time', mods: { reload: 0.35 } },
+  { id: 'amp', name: 'AMP ROUNDS', desc: '+25% damage', mods: { damage: 0.25 }, power: 3 },
+  { id: 'scope', name: 'TARGETING SCOPE', desc: '+20% range', mods: { range: 0.2 }, power: 2 },
+  {
+    id: 'overclock',
+    name: 'OVERCLOCK CORE',
+    desc: '+25% fire rate',
+    mods: { rate: 0.25 },
+    power: 3,
+  },
+  {
+    id: 'payload',
+    name: 'PAYLOAD BAY',
+    desc: '+30% splash/chain range',
+    mods: { aux: 0.3 },
+    power: 3,
+  },
+  { id: 'drum', name: 'EXTENDED DRUM', desc: '+6 burst rounds', mods: { burst: 6 }, power: 2 },
+  {
+    id: 'coolant',
+    name: 'COOLANT LOOP',
+    desc: '-35% reload time',
+    mods: { reload: 0.35 },
+    power: 2,
+  },
 ] as const;
 
 export const MAX_ITEMS_PER_TOWER = 2;

@@ -182,6 +182,23 @@ export class Run {
     return true;
   }
 
+  /** Swap a socketed item for a new one. Returns the replaced item (used → flat salvage). */
+  replaceItem(towerUid: number, index: number, item: ItemDef): ItemDef | null {
+    const tower = this.towers.find((t) => t.uid === towerUid);
+    if (!tower || index < 0 || index >= tower.items.length) return null;
+    const replaced = tower.items[index];
+    tower.items[index] = item;
+    // mods are additive per item — rebuild from the socket set
+    tower.mods = { ...ZERO_MODS };
+    for (const it of tower.items) {
+      for (const [k, v] of Object.entries(it.mods)) {
+        tower.mods[k as keyof TowerMods] += v as number;
+      }
+    }
+    this.#logEvent(`item swap: ${replaced.name} -> ${item.name} on ${tower.def.name}`);
+    return replaced;
+  }
+
   /** Start the next wave. Works mid-wave (send early) — waves stack. */
   startWave(): void {
     if (this.phase === 'won' || this.phase === 'lost' || this.wave >= WAVES.length) return;

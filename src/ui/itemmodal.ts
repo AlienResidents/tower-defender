@@ -1,5 +1,11 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import type { ItemDef } from '../data/items';
+import { settings } from '../settings';
+
+/** Salvage yielded when the whole pool is discarded: Σ power × unit. */
+export function salvageValue(items: ItemDef[]): number {
+  return items.reduce((sum, i) => sum + i.power, 0) * settings.economy.itemSalvageUnit;
+}
 
 /** Elite-drop item picker — shows the d4-rolled pool, pick 1 (or ESC to discard). */
 
@@ -39,7 +45,7 @@ export class ItemModal {
     this.container.addChild(panel);
 
     const title = new Text({
-      text: `ELITE DROP :: d4 rolled ${roll} — pick 1 (or [esc] discard)`,
+      text: `ELITE DROP :: d4 rolled ${roll} — pick 1 (or [esc] discard → +${salvageValue(items)} Sv)`,
       style: { fontFamily: '"Courier New", monospace', fontSize: 15, fill: 0xffa63d },
     });
     title.anchor.set(0.5, 0);

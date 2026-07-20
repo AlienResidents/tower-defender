@@ -21,6 +21,12 @@ export const settings = {
     salvageRate: 0.22,
     /** Concurrent-wave pressure curve: drops × (activeWaves ^ exponent). */
     pressureExponent: 1.75,
+    /** Salvage per point of item power when a drop is discarded. */
+    itemSalvageUnit: 4,
+    /** Flat salvage for a replaced (used) item. */
+    usedItemSalvage: 10,
+    /** Sv → Pd conversion when refining (2 Sv = 1 Pd). */
+    salvageRefineRate: 0.5,
     /** Palladium recharge cost per die type — spec §8 ratio table. */
     rechargeCost: {
       100: 100, // 1:1

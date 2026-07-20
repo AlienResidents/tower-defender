@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Rng } from '../src/core/rng';
 import { towerById } from '../src/data/towers';
 import { DiceSystem, RECHARGE_COST, SALVAGE_RATE, type Wallet } from '../src/game/dice';
+import { settings } from '../src/settings';
 
 /** Scripted RNG: returns queued faces from int(), so gamble outcomes are exact. */
 function scriptedRng(faces: number[]): Rng {
@@ -136,12 +137,12 @@ describe('DiceSystem', () => {
     expect(dice.purchase?.chancesLeft).toBe(1);
   });
 
-  it('refineSalvage converts salvage back to palladium', () => {
+  it('refineSalvage converts salvage back to palladium at the settings rate', () => {
     const wallet = makeWallet(100);
     const dice = new DiceSystem(scriptedRng([]), wallet);
     dice.salvage = 55.5;
     dice.refineSalvage();
-    expect(wallet.bal).toBe(155);
+    expect(wallet.bal).toBe(100 + Math.floor(55.5 * settings.economy.salvageRefineRate));
     expect(dice.salvage).toBe(0);
   });
 

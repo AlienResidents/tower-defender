@@ -4,6 +4,7 @@ import { ITEMS, MAX_ITEMS_PER_TOWER } from '../src/data/items';
 import { towerById, type TowerDef } from '../src/data/towers';
 import { Run, type RunEvent } from '../src/game/run';
 import { Path } from '../src/world/path';
+import { settings } from '../src/settings';
 
 function makeRun(): Run {
   return new Run(
@@ -122,5 +123,34 @@ describe('M3 mechanics', () => {
     expect(tower.mods.range).toBeCloseTo(0.2);
     expect(run.applyItem(tower.uid, drum!)).toBe(false); // at cap
     expect(tower.items).toHaveLength(MAX_ITEMS_PER_TOWER);
+  });
+
+  it('replaceItem swaps a socket and rebuilds mods from the item set', () => {
+    const run = makeRun();
+    const tower = run.placeTower(towerById('vulcan'), 500, 0);
+    const amp = ITEMS.find((i) => i.id === 'amp')!;
+    const scope = ITEMS.find((i) => i.id === 'scope')!;
+    const overclock = ITEMS.find((i) => i.id === 'overclock')!;
+    run.applyItem(tower.uid, amp);
+    run.applyItem(tower.uid, scope);
+    const replaced = run.replaceItem(tower.uid, 0, overclock);
+    expect(replaced?.id).toBe('amp');
+    expect(tower.items.map((i) => i.id)).toEqual(['overclock', 'scope']);
+    expect(tower.mods.damage).toBeCloseTo(0); // amp's mod is gone
+    expect(tower.mods.rate).toBeCloseTo(0.25);
+    expect(tower.mods.range).toBeCloseTo(0.2); // scope untouched
+    expect(run.replaceItem(tower.uid, 9, overclock)).toBeNull();
+    expect(run.replaceItem(999, 0, overclock)).toBeNull();
+  });
+
+  it('salvage: addSalvage credits balance; refine converts at the settings rate', () => {
+    const run = makeRun();
+    const before = run.palladium;
+    run.dice.addSalvage(24);
+    expect(run.dice.salvage).toBe(24);
+    expect(run.dice.stats.salvageEarned).toBe(24);
+    run.dice.refineSalvage();
+    expect(run.dice.salvage).toBe(0);
+    expect(run.palladium).toBe(before + Math.floor(24 * settings.economy.salvageRefineRate));
   });
 });

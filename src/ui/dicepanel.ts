@@ -271,7 +271,7 @@ export class DicePanel {
     this.#buttons.push(refineBtn);
 
     this.#text(
-      'rolls accumulate across chances · bust/abandon = dice become salvage (~22%)',
+      'rolls accumulate across chances · bust/abandon = dice become salvage (~22%) · refine Sv→Pd 2:1',
       11,
       0x3ec6d8,
       24,
