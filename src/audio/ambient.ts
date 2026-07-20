@@ -266,6 +266,9 @@ function buildMusic(out: Tone.Gain): void {
     oscillator: { type: 'fatsawtooth', count: 2, spread: 14 },
     envelope: { attack: 1.6, decay: 2, sustain: 0.5, release: 4 },
   });
+  // pre-warm the voice pool: lazily allocated voices inside scheduled
+  // callbacks trigger Tone's 'use the passed in scheduling time' warning
+  pad.triggerAttackRelease(['D3', 'F3', 'A3', 'E4'], 0.05, Tone.now(), 0);
   const padFilter = new Tone.Filter(1400, 'lowpass');
   const chorus = new Tone.Chorus(0.7, 3.8, 0.4).start();
   pad.connect(padFilter);
