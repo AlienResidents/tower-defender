@@ -114,11 +114,15 @@ export class PauseMenu {
     volTrack.on('pointerdown', (e) => {
       e.stopPropagation();
       const local = volTrack.toLocal(e.global);
-      this.#setVolume(Math.min(Math.max((local.x - (x - 120)) / 240, 0), 1), x);
+      this.#setVolume(Math.min(Math.max((local.x - (x - 120)) / 240, 0), 1), x, y);
     });
     volTrack.on('wheel', (e) => {
       e.stopPropagation();
-      this.#setVolume(Math.min(Math.max(getMasterVolume() - Math.sign(e.deltaY) * 0.05, 0), 1), x);
+      this.#setVolume(
+        Math.min(Math.max(getMasterVolume() - Math.sign(e.deltaY) * 0.05, 0), 1),
+        x,
+        y,
+      );
     });
     this.container.addChild(volTrack);
 
@@ -131,7 +135,7 @@ export class PauseMenu {
     this.#volText.anchor.set(0.5);
     this.#volText.position.set(x, y + 8);
     this.container.addChild(this.#volText);
-    this.#renderVolume(x);
+    this.#renderVolume(x, y);
 
     const restart = menuButton('RESTART LEVEL', 0xffa63d, this.#actions.onRestart);
     restart.container.position.set(x, y + 66);
@@ -142,13 +146,13 @@ export class PauseMenu {
     this.container.addChild(quit.container);
   }
 
-  #setVolume(v: number, x: number): void {
+  #setVolume(v: number, x: number, y: number): void {
     setMasterVolume(v);
-    this.#renderVolume(x);
+    this.#renderVolume(x, y);
     this.#auditionT = 0.4; // beep shortly after the slider stops moving
   }
 
-  #renderVolume(x: number): void {
+  #renderVolume(x: number, y: number): void {
     const v = getMasterVolume();
     this.#volBar
       ?.clear()
