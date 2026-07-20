@@ -26,7 +26,10 @@ import { computeCityLayout, makeSurfaceMap } from './world/city-layout';
  * Greybox mechanics inside the look-locked M1 scene.
  */
 
-const SEED = 1337;
+const params = new URLSearchParams(location.search);
+const SEED = parseInt(params.get('seed') ?? '1337', 10) || 1337;
+const SHIFT_NO = SEED - 1336;
+const SHIFT_LABEL = `SHIFT ${String(SHIFT_NO).padStart(2, '0')}`;
 
 const app = new Application();
 await app.init({
@@ -72,7 +75,6 @@ const searchlights = new SearchlightSystem(DESIGN_W, DESIGN_H);
 const traffic = new TrafficSystem(rng, DESIGN_W, DESIGN_H, 6);
 
 // --- rain backend selection ---
-const params = new URLSearchParams(location.search);
 let rainLabel = 'pixi';
 let rain: WeatherSystem | null = null;
 let webgpuRain: WebGpuRain | null = null;
@@ -101,11 +103,21 @@ scene.addChild(searchlights.container);
 scene.addChild(traffic.container);
 if (rain) scene.addChild(rain.container);
 
+// --- z-order: world < fx < ui < cards < modals < warnings < toast ---
+scene.sortableChildren = true;
+city.container.zIndex = 0;
+smoke.container.zIndex = 5;
+searchlights.container.zIndex = 12;
+traffic.container.zIndex = 14;
+if (rain) rain.container.zIndex = 16;
+
 // --- game: run state + views + build bar + dice panel ---
 const run = new Run(layout.path, rng);
 const runView = new RunView(run, clock);
+runView.container.zIndex = 8;
 scene.addChild(runView.container);
 const buildBar = new BuildBar(DESIGN_W, DESIGN_H - 44);
+buildBar.container.zIndex = 50;
 scene.addChild(buildBar.container);
 
 let pendingSlot: { x: number; y: number } | null = null;
@@ -119,15 +131,28 @@ const dicePanel = new DicePanel(run.dice, (def) => {
   pendingSlot = null;
 });
 scene.addChild(dicePanel.container);
+dicePanel.container.zIndex = 90;
 
 const itemModal = new ItemModal();
+itemModal.container.zIndex = 90;
 scene.addChild(itemModal.container);
+
+// elite drops queue — a second elite kill never wipes an open picker
+const dropQueue: { items: import('./data/items').ItemDef[]; roll: number }[] = [];
+function openNextDrop(): void {
+  if (itemModal.isOpen || dropQueue.length === 0) return;
+  const d = dropQueue.shift();
+  if (!d) return;
+  itemModal.open(d.items, d.roll, DESIGN_W / 2, DESIGN_H / 2 - 40, (item) => {
+    pendingItem = item; // null = discarded; otherwise awaiting tower click
+    openNextDrop();
+  });
+}
 
 run.on((e) => {
   if (e.type === 'eliteDrop') {
-    itemModal.open(e.items, e.roll, DESIGN_W / 2, DESIGN_H / 2 - 40, (item) => {
-      pendingItem = item; // null = discarded; otherwise awaiting tower click
-    });
+    dropQueue.push({ items: e.items, roll: e.roll });
+    openNextDrop();
   }
   if (e.type === 'spawn' && e.enemy.def.boss) {
     bossMode(true);
@@ -138,6 +163,7 @@ run.on((e) => {
       'SIEGE PLATFORM DETECTED // HEAVY METAL',
     );
     scene.addChild(warn.container);
+    warn.container.zIndex = 100;
     app.ticker.add((ticker) => warn.update(ticker.deltaMS / 1000));
     setTimeout(() => warn.dismiss(), 1800);
   }
@@ -150,9 +176,11 @@ let selected: TowerDef | null = null;
 let autoSend = false;
 const ghost = new Graphics();
 ghost.visible = false;
+ghost.zIndex = 31;
 scene.addChild(ghost);
 const slotPads = new Graphics();
 slotPads.visible = false;
+slotPads.zIndex = 30;
 scene.addChild(slotPads);
 
 function drawSlotPads(): void {
@@ -202,7 +230,9 @@ function statusText(): string {
       ? '[enter] send wave'
       : run.phase === 'wave'
         ? `[enter] send early ×${dropMultiplier(waves + 1).toFixed(1)}`
-        : '';
+        : run.phase === 'won'
+          ? '[n] next shift'
+          : '';
   return `LIVES ${run.lives} · WAVE ${run.wave}/${WAVES.length} · Pd ${Math.floor(run.palladium)} · Sv ${Math.floor(run.dice.salvage)}${multText} · ${hint}`;
 }
 
@@ -215,10 +245,13 @@ run.on((e) => {
     const endCard = showTitleCard(
       DESIGN_W,
       DESIGN_H,
-      e.phase === 'won' ? 'SHIFT 01 :: COMPLETE' : 'SHIFT 01 :: FAILED',
-      e.phase === 'won' ? 'SEE YOU SPACE COWBOY…' : 'DATA-CORE BREACH // PHOSPHOR OFFLINE',
+      e.phase === 'won' ? `${SHIFT_LABEL} :: COMPLETE` : `${SHIFT_LABEL} :: FAILED`,
+      e.phase === 'won'
+        ? 'SEE YOU SPACE COWBOY… [n] next shift'
+        : 'DATA-CORE BREACH // PHOSPHOR OFFLINE',
     );
     scene.addChild(endCard.container);
+    endCard.container.zIndex = 80;
     endCard.show();
     app.ticker.add((ticker) => endCard.update(ticker.deltaMS / 1000));
   }
@@ -262,6 +295,7 @@ const hud = new Text({
 });
 hud.anchor.set(0, 0);
 hud.position.set(16, 12);
+hud.zIndex = 55;
 
 function refreshHud(): void {
   const audioLabel =
@@ -277,10 +311,27 @@ scene.addChild(hud);
 const card = showTitleCard(
   DESIGN_W,
   DESIGN_H,
-  'SHIFT 01 :: NEON DISTRICT',
+  `${SHIFT_LABEL} :: NEON DISTRICT`,
   'INITIALIZE // PHOSPHOR ONLINE',
 );
+card.container.zIndex = 70;
 scene.addChild(card.container);
+
+// --- toast (dev feedback, e.g. stats copied) ---
+const toast = new Text({
+  text: '',
+  style: { fontFamily: '"Courier New", monospace', fontSize: 14, fill: 0x66ff99 },
+});
+toast.anchor.set(1, 1);
+toast.position.set(DESIGN_W - 16, DESIGN_H - 56);
+toast.zIndex = 110;
+toast.alpha = 0;
+scene.addChild(toast);
+let toastT = 0;
+function showToast(text: string): void {
+  toast.text = text;
+  toastT = 2;
+}
 fitScene();
 app.renderer.on('resize', fitScene);
 
@@ -302,13 +353,21 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 'm' && audioState !== 'off') {
     audioState = toggleMute() ? 'muted' : 'on';
   }
-  if (event.key === 'Enter') run.startWave();
+  if (event.key === 'Enter') {
+    run.startWave();
+    card.dismiss(); // intro card auto-dismisses when the action starts
+  }
   if (event.key === 'a' || event.key === 'A') {
     autoSend = !autoSend;
   }
   if (event.key === 'c' || event.key === 'C') {
     // dev-mode: copy the run summary to clipboard
     void navigator.clipboard.writeText(JSON.stringify(run.buildRunSummary(SEED), null, 2));
+    showToast('STATS COPIED ✓');
+  }
+  if (event.key === 'n' && run.phase === 'won') {
+    // next shift = next seed (map = seed until the campaign picker exists)
+    location.search = `?seed=${SEED + 1}`;
   }
   if (event.key === 'Escape') {
     if (dicePanel.isOpen) {
@@ -356,5 +415,11 @@ app.ticker.add((ticker) => {
   });
   buildBar.setStatus(statusText());
   dicePanel.update(rawDt);
+  if (toastT > 0) {
+    toastT -= rawDt;
+    toast.alpha = Math.min(1, toastT);
+  } else {
+    toast.alpha = 0;
+  }
   if (clock.paused) card.update(rawDt); // pause screen animates on wall time
 });
