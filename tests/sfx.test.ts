@@ -79,10 +79,13 @@ describe('modPreset — item-mod-driven SFX', () => {
     const one = modPreset(chugRip, { ...ZERO_MODS, burst: 6 });
     expect(one.hits).toBe(14);
     expect(one.hitGap).toBeCloseTo(settings.audio.minBurstGapSeconds);
+    // energy preservation: gain scales by √(base/new) so the bus stays clean
+    expect(one.gain).toBeCloseTo(chugRip.gain * Math.sqrt(8 / 14));
     // two drums (+12): 8→20 hits, gap wants 0.008 → still floored
     const two = modPreset(chugRip, { ...ZERO_MODS, burst: 12 });
     expect(two.hits).toBe(20);
     expect(two.hitGap).toBeCloseTo(settings.audio.minBurstGapSeconds);
+    expect(two.gain).toBeCloseTo(chugRip.gain * Math.sqrt(8 / 20));
   });
 
   it('range mod stretches hit duration slightly', () => {

@@ -34,8 +34,13 @@ const VOICE_CAPS: Record<WeaponSoundKind, number> = {
 };
 const voices = new Map<WeaponSoundKind, number>();
 
-function voiceAvailable(kind: WeaponSoundKind): boolean {
-  return (voices.get(kind) ?? 0) < VOICE_CAPS[kind];
+/** Caps tighten with game speed — 4x means a quarter of the voices. */
+function capFor(kind: WeaponSoundKind, timeScale: number): number {
+  return Math.max(1, Math.ceil(VOICE_CAPS[kind] / timeScale));
+}
+
+function voiceAvailable(kind: WeaponSoundKind, timeScale: number): boolean {
+  return (voices.get(kind) ?? 0) < capFor(kind, timeScale);
 }
 
 function voiceHeld(kind: WeaponSoundKind, seconds: number): void {
@@ -131,10 +136,13 @@ export function playPreset(p: SfxPreset, timeScale = 1): void {
     t0 += p.charge.duration / timeScale; // compress charge at high game speed
   }
   const hitGap = p.hitGap / timeScale;
-  for (let i = 0; i < p.hits; i++) {
+  // at game speed, hits shrink with their gaps — otherwise 4x stacks ~15
+  // overlapping hits per burst into the limiter (the "clipping" report)
+  const scaled: SfxPreset = timeScale > 1 ? { ...p, duration: p.duration / timeScale } : p;
+  for (let i = 0; i < scaled.hits; i++) {
     const at = t0 + i * hitGap;
-    playHit(p, at);
-    if (p.secondHit) playSecond(p, at + p.secondHit.at / timeScale);
+    playHit(scaled, at);
+    if (scaled.secondHit) playSecond(scaled, at + scaled.secondHit.at / timeScale);
   }
 }
 
@@ -205,6 +213,8 @@ export function modPreset(p: SfxPreset, mods: TowerMods): SfxPreset {
     const span = p.hits * p.hitGap;
     out.hits = newHits;
     out.hitGap = Math.max(span / newHits, settings.audio.minBurstGapSeconds);
+    // energy preservation: more hits, quieter each — the bus stays out of the red
+    out.gain = p.gain * Math.sqrt(p.hits / newHits);
   }
   if (mods.range > 0) {
     out.duration = p.duration * (1 + mods.range * settings.audio.rangeDurationFactor);
@@ -213,14 +223,14 @@ export function modPreset(p: SfxPreset, mods: TowerMods): SfxPreset {
     const bass = 1 - mods.damage * settings.audio.damageBassFactor;
     out.freqStart = p.freqStart * bass;
     out.freqEnd = p.freqEnd * bass;
-    out.gain = p.gain * (1 + mods.damage * settings.audio.damageGainFactor);
+    out.gain = out.gain * (1 + mods.damage * settings.audio.damageGainFactor);
   }
   return out;
 }
 
 /** Play the currently-selected preset for a weapon kind (lab-tuned). */
 export function playWeaponSound(kind: WeaponSoundKind, timeScale = 1, mods?: TowerMods): void {
-  if (!voiceAvailable(kind)) return; // 4x-speed flood guard
+  if (!voiceAvailable(kind, timeScale)) return; // 4x-speed flood guard
   const base = presetFor(kind);
   if (!base) return;
   const preset = mods ? modPreset(base, mods) : base;
