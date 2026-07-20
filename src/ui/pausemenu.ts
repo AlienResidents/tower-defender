@@ -1,5 +1,6 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { getMasterVolume, setMasterVolume } from '../audio/ambient';
+import { playWeaponSound } from '../audio/sfx';
 
 /**
  * Pause menu (ESC/space). Letterbox bars, PAUSED centered in the top bar,
@@ -38,6 +39,7 @@ export class PauseMenu {
   #actions: PauseMenuActions;
   #volBar: Graphics | null = null;
   #volText: Text | null = null;
+  #auditionT = -1; // debounce timer for the volume audition beep
 
   constructor(actions: PauseMenuActions) {
     this.#actions = actions;
@@ -46,6 +48,17 @@ export class PauseMenu {
 
   get isOpen(): boolean {
     return this.container.visible;
+  }
+
+  /** Drives the audition-beep debounce. */
+  update(dt: number): void {
+    if (this.#auditionT < 0) return;
+    this.#auditionT -= dt;
+    if (this.#auditionT <= 0) {
+      this.#auditionT = -1;
+      // let the user hear the new level before resuming
+      playWeaponSound('beam');
+    }
   }
 
   open(x: number, y: number): void {
@@ -101,7 +114,11 @@ export class PauseMenu {
     volTrack.on('pointerdown', (e) => {
       e.stopPropagation();
       const local = volTrack.toLocal(e.global);
-      this.#setVolume(Math.min(Math.max(local.x / 240, 0), 1), x);
+      this.#setVolume(Math.min(Math.max((local.x - (x - 120)) / 240, 0), 1), x);
+    });
+    volTrack.on('wheel', (e) => {
+      e.stopPropagation();
+      this.#setVolume(Math.min(Math.max(getMasterVolume() - Math.sign(e.deltaY) * 0.05, 0), 1), x);
     });
     this.container.addChild(volTrack);
 
@@ -128,13 +145,14 @@ export class PauseMenu {
   #setVolume(v: number, x: number): void {
     setMasterVolume(v);
     this.#renderVolume(x);
+    this.#auditionT = 0.4; // beep shortly after the slider stops moving
   }
 
   #renderVolume(x: number): void {
     const v = getMasterVolume();
     this.#volBar
       ?.clear()
-      .rect(x - 120, -16, 240 * v, 8)
+      .rect(x - 120, y - 16, 240 * v, 8)
       .fill(0x00e5ff);
     if (this.#volText) this.#volText.text = `${Math.round(v * 100)}%`;
   }

@@ -423,6 +423,7 @@ window.addEventListener('keydown', (event) => {
 window.addEventListener('pointerdown', () => card.dismiss());
 armAmbientAudio(() => {
   audioState = 'on';
+  if (pauseMenu.isOpen) pauseMusic(); // armed late while paused — duck now
   refreshHud();
 });
 
@@ -442,6 +443,7 @@ app.ticker.add((ticker) => {
   });
   buildBar.setStatus(statusText());
   dicePanel.update(rawDt);
+  pauseMenu.update(rawDt);
   if (toastT > 0) {
     toastT -= rawDt;
     toast.alpha = Math.min(1, toastT);
