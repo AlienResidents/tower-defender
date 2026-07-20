@@ -37,7 +37,7 @@ describe('SFX preset data', () => {
         if (p.body) {
           expect(p.body.freq).toBeGreaterThan(0);
           expect(p.body.decay).toBeGreaterThan(0);
-          expect(p.body.gain).toBeGreaterThan(0);
+          expect(p.body.gain).toBeGreaterThanOrEqual(0); // 0 = body off
           expect(p.body.gain).toBeLessThanOrEqual(1);
         }
       }
