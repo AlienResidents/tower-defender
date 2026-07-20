@@ -62,8 +62,34 @@ function buildBed(): Tone.Gain {
   buildCityLife(out);
   buildMusic(out);
   buildDice(out);
+  buildBoss(out);
   Tone.Transport.start();
   return out;
+}
+
+/** Boss layer — driving bass pulse, faded in when a boss spawns (spec §6). */
+let bossPulse: Tone.MembraneSynth | null = null;
+let bossGain: Tone.Gain | null = null;
+
+function buildBoss(out: Tone.Gain): void {
+  bossPulse = new Tone.MembraneSynth({
+    pitchDecay: 0.03,
+    octaves: 3,
+    envelope: { attack: 0.004, decay: 0.25, sustain: 0 },
+  });
+  bossGain = new Tone.Gain(0);
+  bossPulse.connect(bossGain);
+  bossGain.connect(out);
+  let step = 0;
+  new Tone.Loop((time) => {
+    bossPulse?.triggerAttackRelease(step % 2 === 0 ? 'D1' : 'G1', '8n', time);
+    step++;
+  }, '8n').start(0);
+}
+
+/** Boss music shift — bass pulse fades in/out (spec §6: bosses get more bass). */
+export function bossMode(on: boolean): void {
+  bossGain?.gain.rampTo(on ? 0.5 : 0, 1.2);
 }
 
 /** Dice audio bus — landing thunks, pitch inversely mapped to side count. */

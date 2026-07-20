@@ -27,44 +27,59 @@ export const WAVES: readonly (readonly WaveGroup[])[] = [
   [
     { enemy: 'swarm', count: 16, interval: 0.4, delay: 0 },
     { enemy: 'walker', count: 8, interval: 1.1, delay: 3 },
+    { enemy: 'aegis', count: 2, interval: 2.5, delay: 5 },
   ],
   [
     { enemy: 'walker', count: 14, interval: 0.9, delay: 0 },
     { enemy: 'siege', count: 1, interval: 1, delay: 6 },
+    { enemy: 'spider', count: 2, interval: 2, delay: 4 },
   ],
   [
     { enemy: 'swarm', count: 20, interval: 0.35, delay: 0 },
     { enemy: 'siege', count: 2, interval: 3, delay: 4 },
+    { enemy: 'aegis', count: 2, interval: 2.5, delay: 3 },
   ],
   [
     { enemy: 'walker', count: 16, interval: 0.8, delay: 0 },
     { enemy: 'swarm', count: 12, interval: 0.4, delay: 4 },
     { enemy: 'siege', count: 1, interval: 1, delay: 8 },
+    { enemy: 'aegis', count: 3, interval: 2, delay: 2 },
+    { enemy: 'spider', count: 2, interval: 2.5, delay: 6 },
   ],
   [
     { enemy: 'walker', count: 12, interval: 0.9, delay: 0 },
     { enemy: 'siege', count: 2, interval: 4, delay: 3 },
+    { enemy: 'aegis', count: 3, interval: 2, delay: 2 },
   ],
   [
     { enemy: 'swarm', count: 26, interval: 0.3, delay: 0 },
     { enemy: 'walker', count: 10, interval: 0.9, delay: 5 },
+    { enemy: 'spider', count: 3, interval: 2, delay: 4 },
   ],
   [
     { enemy: 'walker', count: 18, interval: 0.75, delay: 0 },
     { enemy: 'siege', count: 3, interval: 3.5, delay: 4 },
+    { enemy: 'aegis', count: 3, interval: 2, delay: 3 },
+    { enemy: 'spider', count: 2, interval: 2.5, delay: 6 },
   ],
   [
     { enemy: 'swarm', count: 30, interval: 0.28, delay: 0 },
     { enemy: 'siege', count: 2, interval: 3, delay: 6 },
+    { enemy: 'aegis', count: 4, interval: 1.8, delay: 4 },
   ],
   [
     { enemy: 'walker', count: 22, interval: 0.65, delay: 0 },
     { enemy: 'swarm', count: 16, interval: 0.35, delay: 3 },
     { enemy: 'siege', count: 3, interval: 4, delay: 8 },
+    { enemy: 'aegis', count: 4, interval: 1.8, delay: 5 },
+    { enemy: 'spider', count: 3, interval: 2, delay: 7 },
   ],
   [
     { enemy: 'walker', count: 26, interval: 0.6, delay: 0 },
     { enemy: 'swarm', count: 24, interval: 0.3, delay: 2 },
     { enemy: 'siege', count: 4, interval: 3, delay: 6 },
+    { enemy: 'aegis', count: 4, interval: 1.6, delay: 4 },
+    { enemy: 'spider', count: 3, interval: 2, delay: 5 },
+    { enemy: 'boss', count: 1, interval: 1, delay: 10 },
   ],
 ] as const;

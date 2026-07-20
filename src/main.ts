@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Text } from 'pixi.js';
-import { armAmbientAudio, pauseMusic, resumeMusic, toggleMute } from './audio/ambient';
+import { armAmbientAudio, bossMode, pauseMusic, resumeMusic, toggleMute } from './audio/ambient';
 import { Clock } from './core/clock';
 import { createRng } from './core/rng';
 import { PALETTE } from './data/palette';
@@ -16,6 +16,7 @@ import { Run } from './game/run';
 import { RunView } from './game/runView';
 import { BuildBar } from './ui/buildbar';
 import { DicePanel } from './ui/dicepanel';
+import { ItemModal } from './ui/itemmodal';
 import { showTitleCard } from './ui/titlecard';
 import { buildCity } from './world/city';
 import { computeCityLayout, makeSurfaceMap } from './world/city-layout';
@@ -108,6 +109,7 @@ const buildBar = new BuildBar(DESIGN_W, DESIGN_H - 44);
 scene.addChild(buildBar.container);
 
 let pendingSlot: { x: number; y: number } | null = null;
+let pendingItem: import('./data/items').ItemDef | null = null;
 const dicePanel = new DicePanel(run.dice, (def) => {
   if (pendingSlot) {
     const tower = run.placeTower(def, pendingSlot.x, pendingSlot.y);
@@ -117,6 +119,32 @@ const dicePanel = new DicePanel(run.dice, (def) => {
   pendingSlot = null;
 });
 scene.addChild(dicePanel.container);
+
+const itemModal = new ItemModal();
+scene.addChild(itemModal.container);
+
+run.on((e) => {
+  if (e.type === 'eliteDrop') {
+    itemModal.open(e.items, e.roll, DESIGN_W / 2, DESIGN_H / 2 - 40, (item) => {
+      pendingItem = item; // null = discarded; otherwise awaiting tower click
+    });
+  }
+  if (e.type === 'spawn' && e.enemy.def.boss) {
+    bossMode(true);
+    const warn = showTitleCard(
+      DESIGN_W,
+      DESIGN_H,
+      '!! WARNING !!',
+      'SIEGE PLATFORM DETECTED // HEAVY METAL',
+    );
+    scene.addChild(warn.container);
+    app.ticker.add((ticker) => warn.update(ticker.deltaMS / 1000));
+    setTimeout(() => warn.dismiss(), 1800);
+  }
+  if (e.type === 'death' && e.enemy.def.boss) {
+    bossMode(false);
+  }
+});
 
 let selected: TowerDef | null = null;
 let autoSend = false;
@@ -204,8 +232,17 @@ app.stage.on('pointermove', (event) => {
 });
 app.stage.on('pointerdown', (event) => {
   if (dicePanel.isOpen) return; // modal owns clicks while open
-  if (!selected) return;
   const p = scene.toLocal(event.global);
+  if (pendingItem) {
+    // socket the picked item onto the clicked tower
+    const tower = run.towers.find((t) => Math.hypot(t.x - p.x, t.y - p.y) < 18);
+    if (tower) {
+      run.applyItem(tower.uid, pendingItem);
+      pendingItem = null;
+    }
+    return;
+  }
+  if (!selected) return;
   const slot = nearestSlot(layout, p);
   if (slot && !isOccupied(slot, run.towers)) {
     pendingSlot = slot;
@@ -277,6 +314,10 @@ window.addEventListener('keydown', (event) => {
     if (dicePanel.isOpen) {
       dicePanel.close(); // abandons the purchase, dice become salvage
       pendingSlot = null;
+    } else if (itemModal.isOpen) {
+      itemModal.close(null); // discard the drop
+    } else if (pendingItem) {
+      pendingItem = null;
     } else {
       selected = null;
       buildBar.setSelected(null);

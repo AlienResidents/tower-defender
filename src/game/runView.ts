@@ -19,7 +19,11 @@ export class RunView {
   #clock: Clock;
   #enemyViews = new Map<number, Container>();
   #hpBars = new Map<number, { bar: Graphics; yOff: number }>();
+  #shieldBars = new Map<number, { bar: Graphics; yOff: number }>();
+  #anchorRings = new Map<number, Graphics>();
   #towerViews = new Map<number, Container>();
+  #towerPips = new Map<number, Graphics>();
+  #spiderPulseT = 0;
   #projectileViews = new Map<number, Sprite>();
   #flashes: Flash[] = [];
   #mechTex = makeMechTexture();
@@ -78,6 +82,24 @@ export class RunView {
     this.#hpBars.set(e.uid, { bar: hp, yOff });
 
     unit.addChild(glow, body, hpBg, hp);
+
+    // aegis: shield bar above the hp bar
+    if (e.maxShield > 0) {
+      const shBg = new Graphics().rect(-12, yOff - 5, 24, 2).fill({ color: 0x000000, alpha: 0.6 });
+      const sh = new Graphics();
+      this.#shieldBars.set(e.uid, { bar: sh, yOff: yOff - 5 });
+      unit.addChild(shBg, sh);
+    }
+
+    // boss: anchor indicator ring (hidden until anchored)
+    if (e.def.boss) {
+      const ring = new Graphics();
+      ring.circle(0, 0, 34).stroke({ width: 2, color: 0xffa63d, alpha: 0.9 });
+      ring.visible = false;
+      this.#anchorRings.set(e.uid, ring);
+      unit.addChild(ring);
+    }
+
     unit.position.set(e.x, e.y - 6);
     this.#enemyViews.set(e.uid, unit);
     this.container.addChild(unit);
@@ -90,6 +112,8 @@ export class RunView {
       this.#enemyViews.delete(e.uid);
     }
     this.#hpBars.delete(e.uid);
+    this.#shieldBars.delete(e.uid);
+    this.#anchorRings.delete(e.uid);
     this.#puff(e.x, e.y - 6, died ? 0.35 * e.def.scale + 0.15 : 0.5, died ? e.def.tint : 0xff3355);
   }
 
@@ -142,6 +166,7 @@ export class RunView {
 
   /** Per-frame visual sync: positions, hp bars, projectiles, flash lifetimes. */
   sync(dt: number): void {
+    this.#spiderPulseT += dt;
     for (const e of this.#run.enemies) {
       const v = this.#enemyViews.get(e.uid);
       if (!v || !e.alive) continue;
@@ -154,6 +179,43 @@ export class RunView {
           hb.bar
             .rect(-12, hb.yOff, 24 * frac, 3)
             .fill({ color: frac > 0.5 ? 0x66ff99 : frac > 0.25 ? 0xffcc44 : 0xff4455 });
+        }
+      }
+      const sb = this.#shieldBars.get(e.uid);
+      if (sb) {
+        const frac = e.maxShield > 0 ? Math.max(e.shield / e.maxShield, 0) : 0;
+        sb.bar.clear();
+        if (frac > 0) {
+          sb.bar.rect(-12, sb.yOff, 24 * frac, 2).fill({ color: 0x66aaff });
+        }
+      }
+      const ring = this.#anchorRings.get(e.uid);
+      if (ring) ring.visible = e.anchored;
+    }
+
+    // repair spiders pulse a heal ring periodically
+    if (this.#spiderPulseT > 1.5) {
+      this.#spiderPulseT = 0;
+      for (const e of this.#run.enemies) {
+        if (!e.alive || !e.def.healAura) continue;
+        const ring = new Graphics();
+        ring.circle(e.x, e.y - 6, 30).stroke({ width: 1.5, color: 0x8affa0, alpha: 0.6 });
+        this.#addFlash(ring, 0.6);
+      }
+    }
+    // item pips under towers
+    for (const t of this.#run.towers) {
+      let pips = this.#towerPips.get(t.uid);
+      if (!pips && t.items.length > 0) {
+        pips = new Graphics();
+        pips.position.set(t.x, t.y + 14);
+        this.#towerPips.set(t.uid, pips);
+        this.container.addChild(pips);
+      }
+      if (pips) {
+        pips.clear();
+        for (let i = 0; i < t.items.length; i++) {
+          pips.circle(-6 + i * 12, 0, 3).fill(0xffa63d);
         }
       }
     }

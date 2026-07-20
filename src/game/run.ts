@@ -1,6 +1,7 @@
 import type { Rng } from '../core/rng';
 import type { EnemyDef } from '../data/enemies';
 import { enemyById } from '../data/enemies';
+import { ITEMS, MAX_ITEMS_PER_TOWER, ZERO_MODS, type ItemDef, type TowerMods } from '../data/items';
 import type { TowerDef } from '../data/towers';
 import { WAVES } from '../data/waves';
 import type { Path } from '../world/path';
@@ -26,6 +27,11 @@ export interface EnemyState {
   dist: number;
   hp: number;
   maxHp: number;
+  shield: number;
+  maxShield: number;
+  lastDamageT: number;
+  anchored: boolean;
+  anchorT: number;
   alive: boolean;
   x: number;
   y: number;
@@ -39,6 +45,8 @@ export interface TowerState {
   cooldown: number;
   burstLeft: number;
   reloadT: number;
+  mods: TowerMods;
+  items: ItemDef[];
 }
 
 export interface ProjectileState {
@@ -49,6 +57,8 @@ export interface ProjectileState {
   y: number;
   speed: number;
   alive: boolean;
+  dmgMult: number;
+  auxMult: number;
 }
 
 export type RunEvent =
@@ -58,6 +68,7 @@ export type RunEvent =
   | { type: 'fire'; tower: TowerState; target: EnemyState }
   | { type: 'splash'; x: number; y: number; radius: number }
   | { type: 'drop'; enemy: EnemyState; amount: number; mult: number }
+  | { type: 'eliteDrop'; enemy: EnemyState; items: ItemDef[]; roll: number }
   | { type: 'phase'; phase: Phase; wave: number };
 
 const STARTING_LIVES = 20;
@@ -89,6 +100,7 @@ export class Run {
   #combatT = 0;
 
   #path: Path;
+  #rng: Rng;
   #spawners: ActiveSpawner[] = [];
   #uid = 1;
   #listeners: ((e: RunEvent) => void)[] = [];
@@ -98,6 +110,7 @@ export class Run {
 
   constructor(path: Path, rng: Rng) {
     this.#path = path;
+    this.#rng = rng;
     this.dice = new DiceSystem(rng, {
       balance: () => this.palladium,
       spend: (amount) => {
@@ -146,11 +159,25 @@ export class Run {
       cooldown: 0,
       burstLeft: def.burst ?? 0,
       reloadT: 0,
+      mods: { ...ZERO_MODS },
+      items: [],
     };
     this.towers.push(tower);
     this.stats.towersPlaced.set(def.id, (this.stats.towersPlaced.get(def.id) ?? 0) + 1);
     this.#logEvent(`tower placed: ${def.name} @ ${Math.round(x)},${Math.round(y)}`);
     return tower;
+  }
+
+  /** Socket an item onto a tower (max MAX_ITEMS_PER_TOWER). */
+  applyItem(towerUid: number, item: ItemDef): boolean {
+    const tower = this.towers.find((t) => t.uid === towerUid);
+    if (!tower || tower.items.length >= MAX_ITEMS_PER_TOWER) return false;
+    tower.items.push(item);
+    for (const [k, v] of Object.entries(item.mods)) {
+      tower.mods[k as keyof TowerMods] += v as number;
+    }
+    this.#logEvent(`item: ${item.name} -> ${tower.def.name}`);
+    return true;
   }
 
   /** Start the next wave. Works mid-wave (send early) — waves stack. */
@@ -170,6 +197,13 @@ export class Run {
     this.#emit({ type: 'phase', phase, wave: this.wave });
   }
 
+  /** Dev/lab hook: spawn an enemy directly (tests, future sandbox). */
+  debugSpawn(enemyId: string): EnemyState {
+    if (this.phase === 'build') this.phase = 'wave';
+    this.#spawn(enemyId, this.wave);
+    return this.enemies[this.enemies.length - 1];
+  }
+
   #spawn(enemyId: string, waveNo: number): void {
     const def = enemyById(enemyId);
     const p = this.#path.pointAt(0);
@@ -180,6 +214,11 @@ export class Run {
       dist: 0,
       hp: def.hp,
       maxHp: def.hp,
+      shield: def.shield ?? 0,
+      maxShield: def.shield ?? 0,
+      lastDamageT: 0,
+      anchored: false,
+      anchorT: 0,
       alive: true,
       x: p.x,
       y: p.y,
@@ -190,7 +229,18 @@ export class Run {
 
   #hit(source: TowerDef, enemy: EnemyState, mult = 1): void {
     if (!enemy.alive) return;
-    enemy.hp -= applyDamage(source.tier, enemy.def.tier, source.damage * mult);
+    let dmg = applyDamage(source.tier, enemy.def.tier, source.damage * mult);
+    if (enemy.def.boss && enemy.anchored) dmg *= 0.4; // anchored: hardened
+    enemy.lastDamageT = this.#combatT;
+    if (enemy.shield > 0) {
+      // tesla EMP strips shields x3; everything else x1
+      const shieldMult = source.kind === 'chain' ? 3 : 1;
+      const absorbed = Math.min(enemy.shield, dmg * shieldMult);
+      enemy.shield -= absorbed;
+      dmg -= absorbed / shieldMult;
+      if (dmg <= 0) return;
+    }
+    enemy.hp -= dmg;
     if (enemy.hp <= 0) {
       enemy.alive = false;
       const dropMult = this.currentMult();
@@ -200,15 +250,27 @@ export class Run {
       this.stats.kills.set(enemy.def.id, (this.stats.kills.get(enemy.def.id) ?? 0) + 1);
       this.#emit({ type: 'drop', enemy, amount, mult: dropMult });
       this.#emit({ type: 'death', enemy });
+      if (enemy.def.elite) {
+        // item drop pool sized by a d4 roll (spec: operator)
+        const roll = this.#rng.int(1, 4);
+        const pool = [...ITEMS];
+        const items: ItemDef[] = [];
+        for (let i = 0; i < Math.min(roll, pool.length); i++) {
+          items.push(pool.splice(this.#rng.int(0, pool.length - 1), 1)[0]);
+        }
+        this.#emit({ type: 'eliteDrop', enemy, items, roll });
+        this.#logEvent(`elite drop: d4=${roll} -> ${items.map((i) => i.name).join(', ')}`);
+      }
     }
   }
 
   #acquire(tower: TowerState): EnemyState | null {
+    const range = tower.def.range * (1 + tower.mods.range);
     let best: EnemyState | null = null;
     for (const e of this.enemies) {
       if (!e.alive) continue;
       const d = Math.hypot(e.x - tower.x, e.y - tower.y);
-      if (d > tower.def.range) continue;
+      if (d > range) continue;
       if (!best || e.dist > best.dist) best = e; // furthest along the path
     }
     return best;
@@ -226,24 +288,26 @@ export class Run {
     const target = this.#acquire(tower);
     if (!target) return;
     const def = tower.def;
+    const dmgMult = 1 + tower.mods.damage;
+    const auxMult = 1 + tower.mods.aux;
 
     switch (def.kind) {
       case 'rail':
       case 'beam':
-        this.#hit(def, target);
+        this.#hit(def, target, dmgMult);
         this.#emit({ type: 'fire', tower, target });
         break;
       case 'chain': {
-        this.#hit(def, target);
+        this.#hit(def, target, dmgMult);
         this.#emit({ type: 'fire', tower, target });
         const others = this.enemies
           .filter((e) => e.alive && e.uid !== target.uid)
           .map((e) => ({ e, d: Math.hypot(e.x - target.x, e.y - target.y) }))
-          .filter((o) => o.d <= def.aux)
+          .filter((o) => o.d <= def.aux * auxMult)
           .sort((a, b) => a.d - b.d)
           .slice(0, 2);
         others.forEach((o, i) => {
-          this.#hit(def, o.e, i === 0 ? 0.6 : 0.3);
+          this.#hit(def, o.e, (i === 0 ? 0.6 : 0.3) * dmgMult);
           this.#emit({ type: 'fire', tower, target: o.e });
         });
         break;
@@ -257,20 +321,22 @@ export class Run {
           y: tower.y,
           speed: 420,
           alive: true,
+          dmgMult,
+          auxMult,
         });
         this.#emit({ type: 'fire', tower, target });
         break;
       case 'burst':
-        this.#hit(def, target);
+        this.#hit(def, target, dmgMult);
         this.#emit({ type: 'fire', tower, target });
         tower.burstLeft--;
         if (tower.burstLeft <= 0) {
-          tower.reloadT = def.reload ?? 0;
-          tower.burstLeft = def.burst ?? 0;
+          tower.reloadT = (def.reload ?? 0) * (1 - tower.mods.reload);
+          tower.burstLeft = (def.burst ?? 0) + tower.mods.burst;
         }
         break;
     }
-    tower.cooldown = 1 / def.fireRate;
+    tower.cooldown = 1 / (def.fireRate * (1 + tower.mods.rate));
   }
 
   #updateProjectiles(dt: number): void {
@@ -287,11 +353,12 @@ export class Run {
         p.alive = false;
         const cx = target ? target.x : p.x;
         const cy = target ? target.y : p.y;
-        this.#emit({ type: 'splash', x: cx, y: cy, radius: p.def.aux });
+        this.#emit({ type: 'splash', x: cx, y: cy, radius: p.def.aux * p.auxMult });
         for (const e of this.enemies) {
           if (!e.alive) continue;
           const d = Math.hypot(e.x - cx, e.y - cy);
-          if (d <= p.def.aux) this.#hit(p.def, e, e.uid === p.targetUid ? 1 : 0.6);
+          if (d <= p.def.aux * p.auxMult)
+            this.#hit(p.def, e, (e.uid === p.targetUid ? 1 : 0.6) * p.dmgMult);
         }
       } else {
         p.x += (dx / dist) * step;
@@ -315,10 +382,19 @@ export class Run {
 
     for (const e of this.enemies) {
       if (!e.alive) continue;
-      e.dist += e.def.speed * dt;
+      // boss anchor cycle: moves 5s, locked down 3s (hardened while anchored)
+      if (e.def.boss) {
+        e.anchorT += dt;
+        e.anchored = e.anchorT % 8 >= 5;
+      }
+      e.dist += (e.anchored ? 0 : e.def.speed) * dt;
       const p = this.#path.pointAt(e.dist);
       e.x = p.x;
       e.y = p.y;
+      // shield regen after 3s undamaged
+      if (e.maxShield > 0 && e.shield < e.maxShield && this.#combatT - e.lastDamageT > 3) {
+        e.shield = Math.min(e.maxShield, e.shield + 12 * dt);
+      }
       if (e.dist >= this.#path.totalLength) {
         e.alive = false;
         this.lives -= e.def.cores;
@@ -335,6 +411,17 @@ export class Run {
 
     for (const t of this.towers) this.#updateTower(t, dt);
     this.#updateProjectiles(dt);
+
+    // repair spiders heal nearby allies (not themselves, not the boss)
+    for (const s of this.enemies) {
+      if (!s.alive || !s.def.healAura) continue;
+      for (const o of this.enemies) {
+        if (!o.alive || o.uid === s.uid || o.def.boss || o.hp >= o.maxHp) continue;
+        if (Math.hypot(o.x - s.x, o.y - s.y) <= 60) {
+          o.hp = Math.min(o.maxHp, o.hp + s.def.healAura * dt);
+        }
+      }
+    }
 
     if (this.#spawners.length === 0 && this.enemies.every((e) => !e.alive)) {
       if (this.wave >= WAVES.length) this.#setPhase('won');
