@@ -25,10 +25,15 @@ export class BuildBar {
       this.#drawBox(box, def, x, y + 6, false);
       const label = new Text({
         text: `[${def.key.toUpperCase()}] ${def.name}`,
-        style: { fontFamily: '"Courier New", monospace', fontSize: 12, fill: def.tint },
+        style: { fontFamily: '"Courier New", monospace', fontSize: 11, fill: def.tint },
       });
-      label.position.set(x + 10, y + 16);
-      this.container.addChild(box, label);
+      label.position.set(x + 10, y + 8);
+      const price = new Text({
+        text: `${def.price} dice`,
+        style: { fontFamily: '"Courier New", monospace', fontSize: 10, fill: 0xffa63d },
+      });
+      price.position.set(x + 10, y + 23);
+      this.container.addChild(box, label, price);
       this.#entries.push({ def, box, x, y: y + 6 });
       x += 136;
     }
