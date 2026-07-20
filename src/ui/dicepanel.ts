@@ -241,21 +241,21 @@ export class DicePanel {
       this.#panel.addChild(b.container);
       this.#buttons.push(b);
     });
-    this.#text(`TRAY ${this.#dice.tray.length}/${this.#dice.slots}`, 12, 0x3ec6d8, sx, 250);
+    this.#text(`TRAY ${this.#dice.tray.length}/${this.#dice.slots}`, 12, 0x3ec6d8, sx, 292);
     const slotBtn = button(`+SLOT ${this.#dice.slotCost()}`, 0x9df5ff, () => {
       if (this.#dice.buySlot()) this.#render();
     });
-    slotBtn.container.position.set(sx + 64, 286);
+    slotBtn.container.position.set(sx + 64, 326);
     this.#panel.addChild(slotBtn.container);
     this.#buttons.push(slotBtn);
     const chanceBtn = button(`+CHANCE ${this.#dice.chanceCost()}`, 0x9df5ff, () => {
       if (this.#dice.buyChance()) this.#render();
     });
-    chanceBtn.container.position.set(sx + 178, 286);
+    chanceBtn.container.position.set(sx + 178, 326);
     this.#panel.addChild(chanceBtn.container);
     this.#buttons.push(chanceBtn);
 
-    this.#text(`SALVAGE ${Math.floor(this.#dice.salvage)}`, 12, 0x8a9bb8, sx, 320);
+    this.#text(`SALVAGE ${Math.floor(this.#dice.salvage)}`, 12, 0x8a9bb8, sx, 360);
     const refineBtn = button(
       'REFINE',
       0x8a9bb8,
@@ -265,7 +265,7 @@ export class DicePanel {
       },
       () => this.#dice.salvage >= 1,
     );
-    refineBtn.container.position.set(sx + 190, 322);
+    refineBtn.container.position.set(sx + 190, 362);
     this.#panel.addChild(refineBtn.container);
     this.#buttons.push(refineBtn);
 

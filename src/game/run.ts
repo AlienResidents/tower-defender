@@ -61,6 +61,7 @@ export type RunEvent =
   | { type: 'phase'; phase: Phase; wave: number };
 
 const STARTING_LIVES = 20;
+const STARTING_PALLADIUM = 100;
 
 interface ActiveSpawner {
   spawner: WaveSpawner;
@@ -71,7 +72,7 @@ export class Run {
   phase: Phase = 'build';
   wave = 0;
   lives = STARTING_LIVES;
-  palladium = 0;
+  palladium = STARTING_PALLADIUM;
   readonly enemies: EnemyState[] = [];
   readonly towers: TowerState[] = [];
   readonly projectiles: ProjectileState[] = [];

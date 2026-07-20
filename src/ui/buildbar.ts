@@ -29,7 +29,7 @@ export class BuildBar {
       });
       label.position.set(x + 10, y + 8);
       const price = new Text({
-        text: `${def.price} dice`,
+        text: `${def.price}`,
         style: { fontFamily: '"Courier New", monospace', fontSize: 10, fill: 0xffa63d },
       });
       price.position.set(x + 10, y + 23);
