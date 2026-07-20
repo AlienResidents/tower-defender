@@ -1,9 +1,11 @@
-import { Container, Graphics, Sprite } from 'pixi.js';
+import { Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { playWeaponSound } from '../audio/sfx';
 import type { Clock } from '../core/clock';
 import type { WeaponSoundKind } from '../data/sfx';
+import { mechSpecFor } from '../data/mechs';
 import type { EnemyState, Run, RunEvent, TowerState } from '../game/run';
-import { makeMechTexture, makeSoftDiscTexture } from '../render/textures';
+import { mechTextures } from '../render/mech';
+import { makeSoftDiscTexture } from '../render/textures';
 
 /** Binds a Run (pure logic) to PixiJS sprites. Subscribes to RunEvents. */
 
@@ -26,8 +28,21 @@ export class RunView {
   #spiderPulseT = 0;
   #projectileViews = new Map<number, Sprite>();
   #flashes: Flash[] = [];
-  #mechTex = makeMechTexture();
+  #mechFrames = new Map<string, [Texture, Texture]>();
+  #mechSprites = new Map<number, Sprite>();
+  #strideT = 0;
+  #strideFrame: 0 | 1 = 0;
   #glowTex = makeSoftDiscTexture();
+
+  /** Walk-frame pair per enemy archetype (lab override or baked default). */
+  #framesFor(enemyId: string): [Texture, Texture] {
+    let frames = this.#mechFrames.get(enemyId);
+    if (!frames) {
+      frames = mechTextures(mechSpecFor(enemyId));
+      this.#mechFrames.set(enemyId, frames);
+    }
+    return frames;
+  }
 
   constructor(run: Run, clock: Clock) {
     this.#run = run;
@@ -71,10 +86,11 @@ export class RunView {
     glow.scale.set(0.5 * e.def.scale, 0.16 * e.def.scale);
     glow.y = 14 * e.def.scale;
 
-    const body = new Sprite(this.#mechTex);
+    const body = new Sprite(this.#framesFor(e.def.id)[0]);
     body.anchor.set(0.5);
     body.scale.set(e.def.scale);
     body.tint = e.def.tint;
+    this.#mechSprites.set(e.uid, body);
 
     const yOff = -22 * e.def.scale;
     const hpBg = new Graphics().rect(-12, yOff, 24, 3).fill({ color: 0x000000, alpha: 0.6 });
@@ -114,6 +130,7 @@ export class RunView {
     this.#hpBars.delete(e.uid);
     this.#shieldBars.delete(e.uid);
     this.#anchorRings.delete(e.uid);
+    this.#mechSprites.delete(e.uid);
     this.#puff(e.x, e.y - 6, died ? 0.35 * e.def.scale + 0.15 : 0.5, died ? e.def.tint : 0xff3355);
   }
 
@@ -167,6 +184,17 @@ export class RunView {
   /** Per-frame visual sync: positions, hp bars, projectiles, flash lifetimes. */
   sync(dt: number): void {
     this.#spiderPulseT += dt;
+    // two-frame walk cycle
+    this.#strideT += dt;
+    if (this.#strideT > 0.18) {
+      this.#strideT = 0;
+      this.#strideFrame = this.#strideFrame === 0 ? 1 : 0;
+      for (const [uid, sprite] of this.#mechSprites) {
+        const enemy = this.#run.enemies.find((en) => en.uid === uid);
+        if (!enemy?.alive) continue;
+        sprite.texture = this.#framesFor(enemy.def.id)[this.#strideFrame];
+      }
+    }
     for (const e of this.#run.enemies) {
       const v = this.#enemyViews.get(e.uid);
       if (!v || !e.alive) continue;

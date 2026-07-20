@@ -12,6 +12,7 @@ import {
   type WeaponSoundKind,
 } from '../data/sfx';
 import { simulatePurchase } from './sim';
+import { buildMechLab } from './mechlab';
 
 /** /lab page — weapon SFX tuning + dice-economy simulation (issue #7). */
 
@@ -400,5 +401,8 @@ function buildSim(): void {
     }, 30);
   };
 }
+
+const mechRoot = document.getElementById('mechlab');
+if (mechRoot) mechRoot.appendChild(buildMechLab());
 
 buildSim();

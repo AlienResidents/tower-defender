@@ -119,6 +119,70 @@
         color: #3ec6d8;
         margin-top: 6px;
       }
+      /* --- mech workshop --- */
+      .mechlab .samples {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      .mechrow {
+        display: flex;
+        gap: 18px;
+        align-items: flex-start;
+      }
+      .mechcanvas {
+        background: #0b1020;
+        border: 1px solid #1b2a4a;
+        border-radius: 6px;
+      }
+      .palette {
+        min-width: 130px;
+      }
+      .pal-title {
+        color: #5b7a94;
+        font-size: 11px;
+        margin-bottom: 6px;
+      }
+      .pal-chip {
+        border: 1px dashed #3ec6d8;
+        color: #9df5ff;
+        padding: 6px 10px;
+        margin-bottom: 6px;
+        border-radius: 4px;
+        cursor: grab;
+        text-align: center;
+        user-select: none;
+      }
+      .pal-chip:hover {
+        background: #0e1830;
+      }
+      .mecheditor {
+        flex: 1;
+        min-width: 320px;
+      }
+      .partslist {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .part-chip {
+        border: 1px solid #1b2a4a;
+        color: #8a9bb8;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .part-chip.active {
+        border-color: #00e5ff;
+        color: #9df5ff;
+      }
+      .part-chip .del {
+        color: #ff4455;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
@@ -126,6 +190,8 @@
     <div class="hint">
       weapon sfx tuning + dice-economy simulation · <a href="/">back to game</a>
     </div>
+    <h2>MECH WORKSHOP</h2>
+    <div id="mechlab"></div>
     <h2>WEAPON SFX</h2>
     <div id="sfx"></div>
     <h2>DICE ECONOMY SIM</h2>

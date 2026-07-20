@@ -12,7 +12,7 @@ export function hexToRgba(hex: number, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-function canvasTexture(
+export function canvasTexture(
   width: number,
   height: number,
   draw: (ctx: CanvasRenderingContext2D) => void,
