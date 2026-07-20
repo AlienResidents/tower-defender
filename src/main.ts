@@ -17,6 +17,7 @@ import { RunView } from './game/runView';
 import { BuildBar } from './ui/buildbar';
 import { DicePanel } from './ui/dicepanel';
 import { ItemModal } from './ui/itemmodal';
+import { PauseMenu } from './ui/pausemenu';
 import { showTitleCard } from './ui/titlecard';
 import { buildCity } from './world/city';
 import { computeCityLayout, makeSurfaceMap } from './world/city-layout';
@@ -136,6 +137,34 @@ dicePanel.container.zIndex = 90;
 const itemModal = new ItemModal();
 itemModal.container.zIndex = 90;
 scene.addChild(itemModal.container);
+
+// --- pause menu (ESC / space) ---
+let resumeScale: 1 | 2 | 4 = 1;
+
+function openPauseMenu(): void {
+  if (pauseMenu.isOpen) return;
+  resumeScale = clock.scale > 0 ? (clock.scale as 1 | 2 | 4) : 1;
+  clock.setScale(0);
+  pauseMenu.open(DESIGN_W / 2, DESIGN_H / 2);
+  pauseMusic();
+}
+
+function closePauseMenu(): void {
+  if (!pauseMenu.isOpen) return;
+  pauseMenu.close();
+  clock.setScale(resumeScale);
+  resumeMusic();
+}
+
+const pauseMenu = new PauseMenu({
+  onResume: () => closePauseMenu(),
+  onRestart: () => location.reload(),
+  onQuit: () => {
+    location.href = location.pathname; // strip ?seed — back to shift start
+  },
+});
+pauseMenu.container.zIndex = 85;
+scene.addChild(pauseMenu.container);
 
 // elite drops queue — a second elite kill never wipes an open picker
 const dropQueue: { items: import('./data/items').ItemDef[]; roll: number }[] = [];
@@ -338,14 +367,8 @@ app.renderer.on('resize', fitScene);
 // --- input ---
 window.addEventListener('keydown', (event) => {
   if (event.key === ' ') {
-    clock.togglePause();
-    if (clock.paused) {
-      card.show();
-      pauseMusic();
-    } else {
-      card.hide();
-      resumeMusic();
-    }
+    if (pauseMenu.isOpen) closePauseMenu();
+    else openPauseMenu();
   }
   if (event.key === '1') clock.setScale(1);
   if (event.key === '2') clock.setScale(2);
@@ -377,11 +400,15 @@ window.addEventListener('keydown', (event) => {
       itemModal.close(null); // discard the drop
     } else if (pendingItem) {
       pendingItem = null;
-    } else {
+    } else if (pauseMenu.isOpen) {
+      closePauseMenu();
+    } else if (selected) {
       selected = null;
       buildBar.setSelected(null);
       ghost.visible = false;
       drawSlotPads();
+    } else {
+      openPauseMenu();
     }
   }
   const towerPick = towerByKey(event.key.toLowerCase());

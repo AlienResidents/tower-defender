@@ -12,6 +12,33 @@ let master: Tone.Gain | null = null;
 let muted = false;
 
 const MASTER_LEVEL = 0.9;
+const VOLUME_KEY = 'phosphor.volume';
+let masterVolume = loadVolume();
+
+function loadVolume(): number {
+  try {
+    const raw = localStorage.getItem(VOLUME_KEY);
+    const v = raw ? Number(raw) : NaN;
+    return Number.isFinite(v) && v >= 0 && v <= 1 ? v : MASTER_LEVEL;
+  } catch {
+    return MASTER_LEVEL;
+  }
+}
+
+/** Master volume 0..1, persisted. Distinct from [m] mute. */
+export function setMasterVolume(v: number): void {
+  masterVolume = Math.min(Math.max(v, 0), 1);
+  try {
+    localStorage.setItem(VOLUME_KEY, String(masterVolume));
+  } catch {
+    // session-only
+  }
+  if (master && !muted) master.gain.rampTo(masterVolume * MASTER_LEVEL, 0.1);
+}
+
+export function getMasterVolume(): number {
+  return masterVolume;
+}
 
 export function armAmbientAudio(onStart: () => void): void {
   const begin = () => {
@@ -35,7 +62,7 @@ export function audioMaster(): Tone.Gain | null {
 export function toggleMute(): boolean {
   if (!master) return false;
   muted = !muted;
-  master.gain.rampTo(muted ? 0 : MASTER_LEVEL, 0.1);
+  master.gain.rampTo(muted ? 0 : masterVolume * MASTER_LEVEL, 0.1);
   return muted;
 }
 
@@ -50,11 +77,11 @@ export function pauseMusic(): void {
 export function resumeMusic(): void {
   if (!master) return;
   Tone.Transport.start();
-  master.gain.rampTo(muted ? 0 : MASTER_LEVEL, 0.3);
+  master.gain.rampTo(muted ? 0 : masterVolume * MASTER_LEVEL, 0.3);
 }
 
 function buildBed(): Tone.Gain {
-  const out = new Tone.Gain(MASTER_LEVEL);
+  const out = new Tone.Gain(masterVolume * MASTER_LEVEL);
   // limiter keeps heavy SFX moments (4x speed, full tower rows) from clipping
   const limiter = new Tone.Limiter(-2).toDestination();
   out.connect(limiter);
