@@ -1,4 +1,4 @@
-import { Container, Graphics, Rectangle, Text } from 'pixi.js';
+import { Container, Graphics, Text } from 'pixi.js';
 import { getMasterVolume, setMasterVolume } from '../audio/ambient';
 import { playWeaponSound } from '../audio/sfx';
 import { settings } from '../settings';
@@ -6,6 +6,10 @@ import { settings } from '../settings';
 /**
  * Pause menu (ESC/space). Letterbox bars, PAUSED centered in the top bar,
  * center panel: RESUME / VOLUME / RESTART LEVEL / QUIT.
+ *
+ * The volume control is a native <input type="range"> overlaid on the canvas —
+ * real drag, click-to-set, wheel, and a fat grab-ball. Pixi hit-testing on a
+ * thin slider proved unreliable across render scales; the DOM doesn't miss.
  */
 
 export interface PauseMenuActions {
@@ -13,6 +17,9 @@ export interface PauseMenuActions {
   onRestart: () => void;
   onQuit: () => void;
 }
+
+/** Maps design-space coords to CSS-pixel screen coords (canvas is fixed full-window). */
+export type DesignToScreen = (dx: number, dy: number) => { x: number; y: number };
 
 function menuButton(label: string, tint: number, onClick: () => void): { container: Container } {
   const container = new Container();
@@ -38,12 +45,14 @@ function menuButton(label: string, tint: number, onClick: () => void): { contain
 export class PauseMenu {
   readonly container = new Container();
   #actions: PauseMenuActions;
-  #volBar: Graphics | null = null;
+  #toScreen: DesignToScreen;
+  #volSlider: HTMLInputElement | null = null;
   #volText: Text | null = null;
   #auditionT = -1; // debounce timer for the volume audition beep
 
-  constructor(actions: PauseMenuActions) {
+  constructor(actions: PauseMenuActions, toScreen: DesignToScreen) {
     this.#actions = actions;
+    this.#toScreen = toScreen;
     this.container.visible = false;
   }
 
@@ -106,7 +115,7 @@ export class PauseMenu {
     resume.container.position.set(x, y - 110);
     this.container.addChild(resume.container);
 
-    // volume
+    // volume — native slider, real drag, neon grab-ball (CSS in index.html)
     const volLabel = new Text({
       text: 'VOLUME',
       style: { fontFamily: '"Courier New", monospace', fontSize: 13, fill: 0x3ec6d8 },
@@ -115,29 +124,33 @@ export class PauseMenu {
     volLabel.position.set(x, y - 48);
     this.container.addChild(volLabel);
 
-    // track-local geometry: rect lives at 0..240 so getLocalPosition maps 1:1.
-    // The bar is visually 8px tall but the hit zone is fat — thin sliders are
-    // unclickable at render scale; miss-by-3px swallowed clicks as "broken".
-    const volTrack = new Graphics();
-    volTrack.position.set(x - 120, y - 16);
-    volTrack.rect(0, 0, 240, 8).fill({ color: 0x16203a });
-    volTrack.eventMode = 'static';
-    volTrack.cursor = 'pointer';
-    volTrack.hitArea = new Rectangle(-12, -14, 264, 36);
-    volTrack.on('pointerdown', (e) => {
-      e.stopPropagation();
-      const local = e.getLocalPosition(volTrack);
-      this.#setVolume(Math.min(Math.max(local.x / 240, 0), 1));
+    const left = this.#toScreen(x - 120, y - 16);
+    const right = this.#toScreen(x + 120, y - 16);
+    const centerY = this.#toScreen(x, y - 12).y;
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = '0';
+    slider.max = '100';
+    slider.value = String(Math.round(getMasterVolume() * 100));
+    slider.className = 'phosphor-slider';
+    slider.style.left = `${left.x}px`;
+    slider.style.top = `${centerY - 14}px`; // 28px grab zone centered on the track
+    slider.style.width = `${right.x - left.x}px`;
+    slider.addEventListener('input', () => {
+      this.#setVolume(Number(slider.value) / 100);
     });
-    volTrack.on('wheel', (e) => {
-      e.stopPropagation();
-      this.#setVolume(Math.min(Math.max(getMasterVolume() - Math.sign(e.deltaY) * 0.05, 0), 1));
-    });
-    this.container.addChild(volTrack);
+    slider.addEventListener(
+      'wheel',
+      (e) => {
+        e.preventDefault();
+        const v = Math.min(Math.max(getMasterVolume() - Math.sign(e.deltaY) * 0.05, 0), 1);
+        this.#setVolume(v);
+      },
+      { passive: false },
+    );
+    document.body.appendChild(slider);
+    this.#volSlider = slider;
 
-    this.#volBar = new Graphics();
-    this.#volBar.position.set(x - 120, y - 16);
-    this.container.addChild(this.#volBar);
     this.#volText = new Text({
       text: '',
       style: { fontFamily: '"Courier New", monospace', fontSize: 12, fill: 0x9df5ff },
@@ -164,15 +177,18 @@ export class PauseMenu {
 
   #renderVolume(): void {
     const v = getMasterVolume();
-    this.#volBar
-      ?.clear()
-      .rect(0, 0, 240 * v, 8)
-      .fill(0x00e5ff);
-    if (this.#volText) this.#volText.text = `${Math.round(v * 100)}%`;
+    const pct = Math.round(v * 100);
+    if (this.#volText) this.#volText.text = `${pct}%`;
+    if (this.#volSlider) {
+      if (this.#volSlider.value !== String(pct)) this.#volSlider.value = String(pct);
+      this.#volSlider.style.setProperty('--fill', `${pct}%`);
+    }
   }
 
   close(): void {
     this.container.visible = false;
     this.container.removeChildren();
+    this.#volSlider?.remove();
+    this.#volSlider = null;
   }
 }

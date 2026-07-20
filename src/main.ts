@@ -164,13 +164,19 @@ function closePauseMenu(): void {
   resumeMusic();
 }
 
-const pauseMenu = new PauseMenu({
-  onResume: () => closePauseMenu(),
-  onRestart: () => location.reload(),
-  onQuit: () => {
-    location.href = location.pathname; // strip ?seed — back to shift start
+const pauseMenu = new PauseMenu(
+  {
+    onResume: () => closePauseMenu(),
+    onRestart: () => location.reload(),
+    onQuit: () => {
+      location.href = location.pathname; // strip ?seed — back to shift start
+    },
   },
-});
+  (dx, dy) => ({
+    x: scene.position.x + dx * scene.scale.x,
+    y: scene.position.y + dy * scene.scale.y,
+  }),
+);
 pauseMenu.container.zIndex = 85;
 scene.addChild(pauseMenu.container);
 
