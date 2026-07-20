@@ -87,9 +87,68 @@ function playHit(p: SfxPreset, time: number): void {
 }
 
 export function playPreset(p: SfxPreset): void {
-  for (let i = 0; i < p.hits; i++) {
-    playHit(p, Tone.now() + i * p.hitGap);
+  let t0 = Tone.now();
+  if (p.charge && p.charge.gain > 0.001 && p.charge.duration > 0.01) {
+    playCharge(p.charge, t0);
+    t0 += p.charge.duration;
   }
+  for (let i = 0; i < p.hits; i++) {
+    const at = t0 + i * p.hitGap;
+    playHit(p, at);
+    if (p.secondHit) playSecond(p, at + p.secondHit.at);
+  }
+}
+
+/** Rising capacitor whine before the main hit. */
+function playCharge(
+  c: { osc: SfxPreset['osc']; freqStart: number; freqEnd: number; duration: number; gain: number },
+  time: number,
+): void {
+  const out = bus();
+  const env = new Tone.AmplitudeEnvelope({
+    attack: c.duration * 0.2,
+    decay: c.duration * 0.7,
+    sustain: 0,
+    release: 0.03,
+  }).connect(out);
+  const osc = new Tone.Oscillator(c.freqStart, c.osc);
+  const g = new Tone.Gain(c.gain);
+  osc.connect(g);
+  g.connect(env);
+  osc.frequency.setValueAtTime(c.freqStart, time);
+  osc.frequency.exponentialRampTo(Math.max(c.freqEnd, 1), c.duration * 0.9, time);
+  osc.start(time).stop(time + c.duration + 0.05);
+  env.triggerAttackRelease(c.duration, time);
+  const disposeAfter = Math.max(0, time - Tone.now() + c.duration + 0.3) * 1000;
+  setTimeout(() => {
+    osc.dispose();
+    g.dispose();
+    env.dispose();
+  }, disposeAfter);
+}
+
+/** The distinct second transient — the "chunk" after the "ku". */
+function playSecond(p: SfxPreset, time: number): void {
+  const s = p.secondHit;
+  if (!s) return;
+  playHit(
+    {
+      ...p,
+      osc: s.osc,
+      freqStart: s.freqStart,
+      freqEnd: s.freqEnd,
+      duration: s.duration,
+      gain: s.gain,
+      noise: s.noise,
+      noiseFreq: s.noiseFreq,
+      attack: 0.002,
+      charge: undefined,
+      secondHit: undefined,
+      hits: 1,
+      hitGap: 0,
+    },
+    time,
+  );
 }
 
 /** Play the currently-selected preset for a weapon kind (lab-tuned). */

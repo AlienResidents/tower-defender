@@ -27,6 +27,20 @@ export interface SfxPreset {
   hits: number;
   /** seconds between hits */
   hitGap: number;
+  /** optional charge-up whine played before the hit */
+  charge?: { osc: OscType; freqStart: number; freqEnd: number; duration: number; gain: number };
+  /** optional distinct second transient after the hit (ku-chunk) */
+  secondHit?: {
+    osc: OscType;
+    freqStart: number;
+    freqEnd: number;
+    duration: number;
+    gain: number;
+    noise: number;
+    noiseFreq: number;
+    /** seconds after the main hit */
+    at: number;
+  };
   /** optional low resonant body under the transient */
   body?: { osc: OscType; freq: number; decay: number; gain: number };
 }
@@ -37,51 +51,84 @@ export const SFX_PRESETS: Record<WeaponSoundKind, SfxPreset[]> = {
   rail: [
     {
       id: 'rail.boom',
-      name: 'Boom',
-      osc: 'sine',
-      freqStart: 180,
-      freqEnd: 36,
-      sweepTime: 0.1,
-      attack: 0.004,
-      noise: 0.35,
-      noiseFreq: 700,
-      duration: 0.45,
-      gain: 0.5,
-      hits: 1,
-      hitGap: 0,
-      body: { osc: 'sine', freq: 50, decay: 0.5, gain: 0.5 },
-    },
-    {
-      id: 'rail.crack',
-      name: 'Crack',
+      name: 'Capacitor',
       osc: 'square',
-      freqStart: 1400,
-      freqEnd: 180,
-      sweepTime: 0.05,
+      freqStart: 900,
+      freqEnd: 300,
+      sweepTime: 0.03,
       attack: 0.002,
-      noise: 0.6,
-      noiseFreq: 1800,
-      duration: 0.2,
+      noise: 0.5,
+      noiseFreq: 1400,
+      duration: 0.05,
       gain: 0.4,
       hits: 1,
       hitGap: 0,
-      body: { osc: 'sine', freq: 90, decay: 0.25, gain: 0.35 },
+      charge: { osc: 'sawtooth', freqStart: 280, freqEnd: 1600, duration: 0.65, gain: 0.14 },
+      secondHit: {
+        osc: 'sine',
+        freqStart: 120,
+        freqEnd: 35,
+        duration: 0.18,
+        gain: 0.55,
+        noise: 0.5,
+        noiseFreq: 700,
+        at: 0.07,
+      },
+      body: { osc: 'sine', freq: 55, decay: 0.3, gain: 0.35 },
     },
     {
-      id: 'rail.railzap',
-      name: 'Rail Zap',
-      osc: 'sawtooth',
-      freqStart: 2400,
-      freqEnd: 90,
-      sweepTime: 0.12,
-      attack: 0.003,
-      noise: 0.3,
-      noiseFreq: 1200,
-      duration: 0.3,
+      id: 'rail.crack',
+      name: 'Coilgun',
+      osc: 'square',
+      freqStart: 700,
+      freqEnd: 220,
+      sweepTime: 0.03,
+      attack: 0.002,
+      noise: 0.65,
+      noiseFreq: 1000,
+      duration: 0.045,
       gain: 0.42,
       hits: 1,
       hitGap: 0,
-      body: { osc: 'sawtooth', freq: 70, decay: 0.35, gain: 0.3 },
+      charge: { osc: 'sine', freqStart: 180, freqEnd: 1100, duration: 0.55, gain: 0.16 },
+      secondHit: {
+        osc: 'sine',
+        freqStart: 95,
+        freqEnd: 30,
+        duration: 0.22,
+        gain: 0.6,
+        noise: 0.4,
+        noiseFreq: 500,
+        at: 0.08,
+      },
+      body: { osc: 'sine', freq: 48, decay: 0.4, gain: 0.4 },
+    },
+    {
+      id: 'rail.railzap',
+      name: 'Servo',
+      osc: 'sawtooth',
+      freqStart: 1600,
+      freqEnd: 400,
+      sweepTime: 0.03,
+      attack: 0.002,
+      noise: 0.55,
+      noiseFreq: 2200,
+      duration: 0.04,
+      gain: 0.36,
+      hits: 1,
+      hitGap: 0,
+      charge: { osc: 'triangle', freqStart: 420, freqEnd: 2100, duration: 0.45, gain: 0.12 },
+      secondHit: {
+        osc: 'sine',
+        freqStart: 150,
+        freqEnd: 45,
+        duration: 0.14,
+        gain: 0.5,
+        noise: 0.55,
+        noiseFreq: 900,
+        at: 0.06,
+      },
+      body: { osc: 'sine', freq: 90, decay: 0.25, gain: 0.3 },
     },
   ],
   beam: [
@@ -380,7 +427,9 @@ export function getOverride(presetId: string): Partial<SfxPreset> | undefined {
 
 export function setOverride(presetId: string, params: Partial<SfxPreset>): void {
   const stored = readStored();
-  stored.overrides = { ...stored.overrides, [presetId]: params };
+  // merge into the existing override — each slider keeps its own change
+  const existing = stored.overrides?.[presetId] ?? {};
+  stored.overrides = { ...stored.overrides, [presetId]: { ...existing, ...params } };
   writeStored(stored);
 }
 

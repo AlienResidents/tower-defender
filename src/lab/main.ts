@@ -18,33 +18,136 @@ import { simulatePurchase } from './sim';
 // ---------------------------------------------------------------- SFX LAB
 
 interface SliderSpec {
-  key: keyof SfxPreset | 'bodyFreq' | 'bodyDecay' | 'bodyGain';
+  key: keyof SfxPreset | 'bodyFreq' | 'bodyDecay' | 'bodyGain' | 'chargeTime' | 'chargeEnd';
   label: string;
   min: number;
   max: number;
   step: number;
+  hint: string;
 }
 
 const SLIDERS: SliderSpec[] = [
-  { key: 'freqStart', label: 'freq start', min: 20, max: 4000, step: 10 },
-  { key: 'freqEnd', label: 'freq end', min: 10, max: 4000, step: 10 },
-  { key: 'sweepTime', label: 'sweep', min: 0.005, max: 0.4, step: 0.005 },
-  { key: 'attack', label: 'attack', min: 0.001, max: 0.15, step: 0.001 },
-  { key: 'noise', label: 'noise', min: 0, max: 1, step: 0.05 },
-  { key: 'noiseFreq', label: 'noise freq', min: 100, max: 6000, step: 50 },
-  { key: 'duration', label: 'duration', min: 0.02, max: 0.6, step: 0.01 },
-  { key: 'gain', label: 'gain', min: 0.05, max: 1, step: 0.01 },
-  { key: 'hits', label: 'hits', min: 1, max: 14, step: 1 },
-  { key: 'hitGap', label: 'hit gap', min: 0.008, max: 0.15, step: 0.002 },
-  { key: 'bodyFreq', label: 'body freq', min: 20, max: 400, step: 2 },
-  { key: 'bodyDecay', label: 'body decay', min: 0.03, max: 1, step: 0.01 },
-  { key: 'bodyGain', label: 'body gain', min: 0, max: 1, step: 0.02 },
+  {
+    key: 'freqStart',
+    label: 'freq start',
+    min: 20,
+    max: 4000,
+    step: 10,
+    hint: 'pitch at the moment of firing — higher = sharper',
+  },
+  {
+    key: 'freqEnd',
+    label: 'freq end',
+    min: 10,
+    max: 4000,
+    step: 10,
+    hint: 'pitch the sound sweeps to — lower = punchier drop',
+  },
+  {
+    key: 'sweepTime',
+    label: 'sweep',
+    min: 0.005,
+    max: 0.4,
+    step: 0.005,
+    hint: 'how long the pitch takes to travel from start to end',
+  },
+  {
+    key: 'attack',
+    label: 'attack',
+    min: 0.001,
+    max: 0.15,
+    step: 0.001,
+    hint: 'how fast the sound swells in — near zero = clicky transient',
+  },
+  {
+    key: 'noise',
+    label: 'noise',
+    min: 0,
+    max: 1,
+    step: 0.05,
+    hint: 'white-noise mix vs pure tone — more = grittier',
+  },
+  {
+    key: 'noiseFreq',
+    label: 'noise freq',
+    min: 100,
+    max: 6000,
+    step: 50,
+    hint: 'center of the noise band — low = rumble, high = hiss',
+  },
+  {
+    key: 'duration',
+    label: 'duration',
+    min: 0.02,
+    max: 0.6,
+    step: 0.01,
+    hint: 'total length of the sound',
+  },
+  { key: 'gain', label: 'gain', min: 0.05, max: 1, step: 0.01, hint: 'volume of this sound' },
+  {
+    key: 'hits',
+    label: 'hits',
+    min: 1,
+    max: 14,
+    step: 1,
+    hint: 'shots per trigger (burst weapons)',
+  },
+  {
+    key: 'hitGap',
+    label: 'hit gap',
+    min: 0.008,
+    max: 0.15,
+    step: 0.002,
+    hint: 'time between repeated hits',
+  },
+  {
+    key: 'bodyFreq',
+    label: 'body freq',
+    min: 20,
+    max: 400,
+    step: 2,
+    hint: 'pitch of the low resonant body under the transient',
+  },
+  {
+    key: 'bodyDecay',
+    label: 'body decay',
+    min: 0.03,
+    max: 1,
+    step: 0.01,
+    hint: 'how long the body rings',
+  },
+  {
+    key: 'bodyGain',
+    label: 'body gain',
+    min: 0,
+    max: 1,
+    step: 0.02,
+    hint: 'volume of the body layer (0 = off)',
+  },
+  {
+    key: 'chargeTime',
+    label: 'charge len',
+    min: 0,
+    max: 1,
+    step: 0.01,
+    hint: 'seconds of capacitor whine before the shot (0 = no charge)',
+  },
+  {
+    key: 'chargeEnd',
+    label: 'charge end',
+    min: 100,
+    max: 2500,
+    step: 10,
+    hint: 'pitch the charge rises to',
+  },
 ];
 
 function sliderValue(spec: SliderSpec, preset: SfxPreset): number {
   if (spec.key === 'bodyFreq') return preset.body?.freq ?? 60;
   if (spec.key === 'bodyDecay') return preset.body?.decay ?? 0.3;
   if (spec.key === 'bodyGain') return preset.body?.gain ?? 0;
+  if (spec.key === 'chargeTime') return preset.charge?.duration ?? 0;
+  if (spec.key === 'chargeEnd') return preset.charge?.freqEnd ?? 1600;
   return preset[spec.key] as number;
 }
 
@@ -60,6 +163,17 @@ function applySlider(spec: SliderSpec, v: number, preset: SfxPreset): void {
     if (spec.key === 'bodyDecay') body.decay = v;
     if (spec.key === 'bodyGain') body.gain = v;
     setOverride(preset.id, { body });
+  } else if (spec.key === 'chargeTime' || spec.key === 'chargeEnd') {
+    const charge = {
+      osc: preset.charge?.osc ?? ('sawtooth' as const),
+      freqStart: preset.charge?.freqStart ?? 280,
+      freqEnd: preset.charge?.freqEnd ?? 1600,
+      duration: preset.charge?.duration ?? 0.5,
+      gain: preset.charge?.gain ?? 0.14,
+    };
+    if (spec.key === 'chargeTime') charge.duration = v;
+    if (spec.key === 'chargeEnd') charge.freqEnd = v;
+    setOverride(preset.id, { charge });
   } else {
     setOverride(preset.id, { [spec.key]: v } as Partial<SfxPreset>);
   }
@@ -118,6 +232,7 @@ function buildWeaponSection(kind: WeaponSoundKind): HTMLElement {
     for (const spec of SLIDERS) {
       const wrap = document.createElement('div');
       wrap.className = 'slider';
+      wrap.title = spec.hint; // hover for the explanation
       const label = document.createElement('label');
       label.textContent = spec.label;
       const input = document.createElement('input');

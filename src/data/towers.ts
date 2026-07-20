@@ -31,7 +31,7 @@ export const TOWERS: readonly TowerDef[] = [
     tier: 'mega',
     kind: 'rail',
     range: 260,
-    fireRate: 0.5,
+    fireRate: 0.35,
     damage: 55,
     price: 60,
     aux: 0,

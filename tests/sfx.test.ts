@@ -2,9 +2,24 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SELECTION,
   resolvePreset,
+  setOverride,
+  clearOverride,
   SFX_PRESETS,
   type WeaponSoundKind,
 } from '../src/data/sfx';
+
+// minimal localStorage stub for node
+const store = new Map<string, string>();
+globalThis.localStorage = {
+  getItem: (k: string) => store.get(k) ?? null,
+  setItem: (k: string, v: string) => void store.set(k, v),
+  removeItem: (k: string) => void store.delete(k),
+  clear: () => store.clear(),
+  key: () => null,
+  get length() {
+    return store.size;
+  },
+} as Storage;
 
 describe('SFX preset data', () => {
   it('every preset is well-formed', () => {
@@ -39,5 +54,16 @@ describe('SFX preset data', () => {
     for (const kind of Object.keys(SFX_PRESETS) as WeaponSoundKind[]) {
       expect(SFX_PRESETS[kind]).toHaveLength(3);
     }
+  });
+
+  it('slider overrides merge — multiple changes all apply', () => {
+    const id = 'rail.boom';
+    clearOverride(id);
+    setOverride(id, { gain: 0.7 });
+    setOverride(id, { duration: 0.3 });
+    const resolved = resolvePreset(id);
+    expect(resolved?.gain).toBe(0.7); // first change survived the second
+    expect(resolved?.duration).toBe(0.3);
+    clearOverride(id);
   });
 });
