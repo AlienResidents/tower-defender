@@ -7,6 +7,9 @@ import {
   SFX_PRESETS,
   type WeaponSoundKind,
 } from '../src/data/sfx';
+import { modPreset } from '../src/audio/sfx';
+import { ZERO_MODS } from '../src/data/items';
+import { settings } from '../src/settings';
 
 // minimal localStorage stub for node
 const store = new Map<string, string>();
@@ -65,5 +68,43 @@ describe('SFX preset data', () => {
     expect(resolved?.gain).toBe(0.7); // first change survived the second
     expect(resolved?.duration).toBe(0.3);
     clearOverride(id);
+  });
+});
+
+describe('modPreset — item-mod-driven SFX', () => {
+  const chugRip = resolvePreset('burst.chugrip')!;
+
+  it('burst mod adds hits and compresses the gap to the floor', () => {
+    // one drum (+6): 8→14 hits, span 0.16s → gap 0.0114 → floored at 0.012
+    const one = modPreset(chugRip, { ...ZERO_MODS, burst: 6 });
+    expect(one.hits).toBe(14);
+    expect(one.hitGap).toBeCloseTo(settings.audio.minBurstGapSeconds);
+    // two drums (+12): 8→20 hits, gap wants 0.008 → still floored
+    const two = modPreset(chugRip, { ...ZERO_MODS, burst: 12 });
+    expect(two.hits).toBe(20);
+    expect(two.hitGap).toBeCloseTo(settings.audio.minBurstGapSeconds);
+  });
+
+  it('range mod stretches hit duration slightly', () => {
+    const scoped = modPreset(chugRip, { ...ZERO_MODS, range: 0.2 });
+    expect(scoped.duration).toBeCloseTo(
+      chugRip.duration * (1 + 0.2 * settings.audio.rangeDurationFactor),
+    );
+  });
+
+  it('damage mod drops pitch (thumpier) and lifts gain', () => {
+    const amped = modPreset(chugRip, { ...ZERO_MODS, damage: 0.25 });
+    const bass = 1 - 0.25 * settings.audio.damageBassFactor;
+    expect(amped.freqStart).toBeCloseTo(chugRip.freqStart * bass);
+    expect(amped.freqEnd).toBeCloseTo(chugRip.freqEnd * bass);
+    expect(amped.gain).toBeCloseTo(chugRip.gain * (1 + 0.25 * settings.audio.damageGainFactor));
+  });
+
+  it('zero mods leave the preset untouched', () => {
+    const plain = modPreset(chugRip, { ...ZERO_MODS });
+    expect(plain.hits).toBe(chugRip.hits);
+    expect(plain.hitGap).toBe(chugRip.hitGap);
+    expect(plain.duration).toBe(chugRip.duration);
+    expect(plain.freqStart).toBe(chugRip.freqStart);
   });
 });

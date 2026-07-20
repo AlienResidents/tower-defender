@@ -1,6 +1,8 @@
 import * as Tone from 'tone';
 import { audioMaster } from './ambient';
 import { presetFor, type SfxPreset, type WeaponSoundKind } from '../data/sfx';
+import type { TowerMods } from '../data/items';
+import { settings } from '../settings';
 
 /**
  * Generic weapon-SFX engine: interprets a preset (osc sweep + noise mix +
@@ -190,11 +192,38 @@ function playSecond(p: SfxPreset, time: number): void {
   );
 }
 
+/**
+ * Derive a preset adjusted by tower item mods (operator's rules):
+ * burst  → +6 hits per drum, gap compresses to keep the span, floored
+ * range  → hit duration stretches slightly
+ * damage → pitch drops (thumpier), gain lifts
+ */
+export function modPreset(p: SfxPreset, mods: TowerMods): SfxPreset {
+  const out = { ...p };
+  if (mods.burst > 0 && p.hits > 1) {
+    const newHits = p.hits + Math.round(mods.burst);
+    const span = p.hits * p.hitGap;
+    out.hits = newHits;
+    out.hitGap = Math.max(span / newHits, settings.audio.minBurstGapSeconds);
+  }
+  if (mods.range > 0) {
+    out.duration = p.duration * (1 + mods.range * settings.audio.rangeDurationFactor);
+  }
+  if (mods.damage > 0) {
+    const bass = 1 - mods.damage * settings.audio.damageBassFactor;
+    out.freqStart = p.freqStart * bass;
+    out.freqEnd = p.freqEnd * bass;
+    out.gain = p.gain * (1 + mods.damage * settings.audio.damageGainFactor);
+  }
+  return out;
+}
+
 /** Play the currently-selected preset for a weapon kind (lab-tuned). */
-export function playWeaponSound(kind: WeaponSoundKind, timeScale = 1): void {
+export function playWeaponSound(kind: WeaponSoundKind, timeScale = 1, mods?: TowerMods): void {
   if (!voiceAvailable(kind)) return; // 4x-speed flood guard
-  const preset = presetFor(kind);
-  if (!preset) return;
+  const base = presetFor(kind);
+  if (!base) return;
+  const preset = mods ? modPreset(base, mods) : base;
   const span = preset.hits * preset.hitGap + preset.duration + (preset.body?.decay ?? 0);
   voiceHeld(kind, span);
   playPreset(preset, timeScale);

@@ -66,5 +66,12 @@ export const settings = {
     /** Bus ceiling — the volume slider scales within this. */
     masterLevel: 0.9,
     defaultVolume: 0.9,
+    /** Mod-driven SFX: burst gap floor (stacked drums compress to this), */
+    minBurstGapSeconds: 0.012,
+    /** range mod → hit duration stretch (+20% range = +10% duration), */
+    rangeDurationFactor: 0.5,
+    /** damage mod → pitch drop (thumpier) and gain lift. */
+    damageBassFactor: 0.35,
+    damageGainFactor: 0.2,
   },
 } as const;

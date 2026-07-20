@@ -52,7 +52,7 @@ export class RunView {
         this.#removeEnemy(e.enemy, false);
         break;
       case 'fire':
-        playWeaponSound(e.tower.def.kind as WeaponSoundKind, this.#clock.scale);
+        playWeaponSound(e.tower.def.kind as WeaponSoundKind, this.#clock.scale, e.tower.mods);
         this.#fireFlash(e.tower, e.target);
         break;
       case 'splash':
