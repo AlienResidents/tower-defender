@@ -210,11 +210,18 @@ function openNextDrop(): void {
 // offer the persisted stash — pick to socket, ESC keeps it stashed.
 // Fires at boot and on [s].
 function openStash(): void {
-  if (itemModal.isOpen || meta.stash.length === 0) return;
+  if (itemModal.isOpen) return; // a modal is already up — it owns the screen
+  if (meta.stash.length === 0) {
+    showToast('STASH EMPTY — pick items from elite drops');
+    return;
+  }
   const defs = meta.stash
     .map((id) => itemById(id))
     .filter((d): d is NonNullable<typeof d> => d !== undefined);
-  if (defs.length === 0) return;
+  if (defs.length === 0) {
+    showToast('STASH EMPTY');
+    return;
+  }
   itemModal.open(defs, defs.length, DESIGN_W / 2, DESIGN_H / 2 - 40, (item) => {
     pendingItem = item; // already in the stash — no re-push
   });
