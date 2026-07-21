@@ -207,17 +207,20 @@ function openNextDrop(): void {
   });
 }
 
-// offer the persisted stash once at boot — pick to socket, ESC keeps it stashed
-if (meta.stash.length > 0) {
+// offer the persisted stash — pick to socket, ESC keeps it stashed.
+// Fires at boot and on [s].
+function openStash(): void {
+  if (itemModal.isOpen || meta.stash.length === 0) return;
   const defs = meta.stash
     .map((id) => itemById(id))
     .filter((d): d is NonNullable<typeof d> => d !== undefined);
-  if (defs.length > 0) {
-    itemModal.open(defs, defs.length, DESIGN_W / 2, DESIGN_H / 2 - 40, (item) => {
-      pendingItem = item; // already in the stash — no re-push
-    });
-  }
+  if (defs.length === 0) return;
+  itemModal.open(defs, defs.length, DESIGN_W / 2, DESIGN_H / 2 - 40, (item) => {
+    pendingItem = item; // already in the stash — no re-push
+  });
 }
+
+if (meta.stash.length > 0) openStash();
 
 run.on((e) => {
   if (e.type === 'eliteDrop') {
@@ -304,7 +307,7 @@ function statusText(): string {
         : run.phase === 'won'
           ? '[n] next shift'
           : '';
-  const stashText = meta.stash.length > 0 ? ` · stash ${meta.stash.length}` : '';
+  const stashText = meta.stash.length > 0 ? ` · stash ${meta.stash.length} [s]` : '';
   return `LIVES ${run.lives} · WAVE ${run.wave}/${WAVES.length} · Pd ${Math.floor(run.palladium)} · Sv ${Math.floor(run.dice.salvage)}${stashText}${multText} · ${hint}`;
 }
 
@@ -470,6 +473,9 @@ window.addEventListener('keydown', (event) => {
     const dump = dumpInputLog();
     void navigator.clipboard.writeText(dump.json);
     showToast(`INPUT LOG COPIED ✓ (${dump.count} events)`);
+  }
+  if (event.key === 's' || event.key === 'S') {
+    openStash(); // browse/socket stashed items any time
   }
   if (event.key === 'n' && run.phase === 'won') {
     // next shift: meta already saved with the advance — boot resumes there
