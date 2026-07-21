@@ -209,6 +209,8 @@ function openNextDrop(): void {
 
 // offer the persisted stash — pick to socket, ESC keeps it stashed.
 // Fires at boot and on [s].
+let stashModalOpen = false;
+
 function openStash(): void {
   if (itemModal.isOpen) return; // a modal is already up — it owns the screen
   if (meta.stash.length === 0) {
@@ -222,8 +224,10 @@ function openStash(): void {
     showToast('STASH EMPTY');
     return;
   }
+  stashModalOpen = true;
   itemModal.open(defs, defs.length, DESIGN_W / 2, DESIGN_H / 2 - 40, (item) => {
     pendingItem = item; // already in the stash — no re-push
+    stashModalOpen = false;
   });
 }
 
@@ -482,7 +486,9 @@ window.addEventListener('keydown', (event) => {
     showToast(`INPUT LOG COPIED ✓ (${dump.count} events)`);
   }
   if (event.key === 's' || event.key === 'S') {
-    openStash(); // browse/socket stashed items any time
+    if (stashModalOpen)
+      itemModal.close(null); // toggle: s opens, s closes
+    else openStash();
   }
   if (event.key === 'n' && run.phase === 'won') {
     // next shift: meta already saved with the advance — boot resumes there
