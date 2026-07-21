@@ -5,6 +5,8 @@ import type { WeaponSoundKind } from '../data/sfx';
 import { mechSpecFor } from '../data/mechs';
 import type { EnemyState, Run, RunEvent, TowerState } from '../game/run';
 import { mechTextures, type MechFrames } from '../render/mech';
+import { towerTextures, type TowerFrames } from '../render/towermodel';
+import { towerDesignFor } from '../data/towerdesigns';
 import { makeSoftDiscTexture } from '../render/textures';
 
 /** Binds a Run (pure logic) to PixiJS sprites. Subscribes to RunEvents. */
@@ -31,6 +33,16 @@ export class RunView {
   #mechFrames = new Map<string, MechFrames>();
   #mechSprites = new Map<number, Sprite>();
   #headSprites = new Map<number, Sprite>();
+  #towerFrames = new Map<string, TowerFrames>();
+  #turretSprites = new Map<
+    number,
+    {
+      sprite: Sprite;
+      muzzle: { x: number; y: number };
+      seat: { x: number; y: number };
+      anchor: { x: number; y: number };
+    }
+  >();
   #strideT = 0;
   #strideFrame = 0;
   #glowTex = makeSoftDiscTexture();
@@ -181,16 +193,34 @@ export class RunView {
   }
 
   addTowerView(t: TowerState): void {
+    const frames = this.#towerFramesFor(t.def);
     const unit = new Container();
-    const base = new Graphics();
-    base.circle(0, 0, 10).fill({ color: 0x0b1020 }).stroke({ width: 1.5, color: t.def.tint });
-    const barrel = new Graphics();
-    barrel.moveTo(0, 0).lineTo(0, -14).stroke({ width: 3, color: t.def.tint });
-    const dot = new Graphics().circle(0, 0, 3).fill(t.def.tint);
-    unit.addChild(base, barrel, dot);
+    const base = new Sprite(frames.base);
+    base.anchor.set(0.5, 20 / 24); // ground-line anchor (GROUND_Y / GRID)
+    unit.addChild(base);
+    const turret = new Sprite(frames.turret);
+    turret.anchor.set(frames.turretAnchor.x, frames.turretAnchor.y);
+    turret.position.set(frames.turretSeat.x, frames.turretSeat.y);
+    unit.addChild(turret);
+    this.#turretSprites.set(t.uid, {
+      sprite: turret,
+      muzzle: frames.muzzle,
+      seat: frames.turretSeat,
+      anchor: frames.turretAnchor,
+    });
     unit.position.set(t.x, t.y);
     this.#towerViews.set(t.uid, unit);
     this.container.addChild(unit);
+  }
+
+  /** Pixel model per tower archetype (lab override or baked default). */
+  #towerFramesFor(def: TowerState['def']): TowerFrames {
+    let frames = this.#towerFrames.get(def.id);
+    if (!frames) {
+      frames = towerTextures(towerDesignFor(def.id), def.tint);
+      this.#towerFrames.set(def.id, frames);
+    }
+    return frames;
   }
 
   /** Per-frame visual sync: positions, hp bars, projectiles, flash lifetimes. */
@@ -252,6 +282,29 @@ export class RunView {
       if (ring) ring.visible = e.anchored;
     }
 
+    // turret aiming — track nearest enemy in range, shortest-path smoothing
+    for (const t of this.#run.towers) {
+      const mount = this.#turretSprites.get(t.uid);
+      if (!mount) continue;
+      const range = t.def.range * (1 + t.mods.range);
+      let target: EnemyState | null = null;
+      let bestD = range * range;
+      for (const enemy of this.#run.enemies) {
+        if (!enemy.alive) continue;
+        const d = (enemy.x - t.x) ** 2 + (enemy.y - t.y) ** 2;
+        if (d < bestD) {
+          bestD = d;
+          target = enemy;
+        }
+      }
+      if (target) {
+        const raw = Math.atan2(target.y - t.y, target.x - t.x);
+        let diff = raw - mount.sprite.rotation;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        mount.sprite.rotation += diff * Math.min(1, dt * 8);
+      }
+    }
     // repair spiders pulse a heal ring periodically
     if (this.#spiderPulseT > 1.5) {
       this.#spiderPulseT = 0;

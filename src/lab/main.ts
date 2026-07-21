@@ -13,6 +13,7 @@ import {
 } from '../data/sfx';
 import { simulatePurchase } from './sim';
 import { buildMechLab } from './mechlab';
+import { buildTowerLab } from './towerlab';
 
 /** /lab page — weapon SFX tuning + dice-economy simulation (issue #7). */
 
@@ -404,5 +405,7 @@ function buildSim(): void {
 
 const mechRoot = document.getElementById('mechlab');
 if (mechRoot) mechRoot.appendChild(buildMechLab());
+const towerRoot = document.getElementById('towerlab');
+if (towerRoot) towerRoot.appendChild(buildTowerLab());
 
 buildSim();
