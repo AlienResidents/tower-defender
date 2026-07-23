@@ -18,6 +18,7 @@ import { BuildBar } from './ui/buildbar';
 import { DicePanel } from './ui/dicepanel';
 import { ItemModal } from './ui/itemmodal';
 import { PauseMenu } from './ui/pausemenu';
+import { MetaScreen } from './ui/metascreen';
 import { showTitleCard } from './ui/titlecard';
 import { buildCity } from './world/city';
 import { computeCityLayout, makeSurfaceMap } from './world/city-layout';
@@ -124,6 +125,8 @@ if (rain) rain.container.zIndex = 16;
 
 // --- game: run state + views + build bar + dice panel ---
 const run = new Run(layout.path, rng, { startingPalladium: meta.palladium });
+run.setAttrGrid(meta.grid); // attribute grid bonuses apply at placement
+const metaScreen = new MetaScreen({ meta, run, onToast: showToast });
 const runView = new RunView(run, clock);
 runView.container.zIndex = 8;
 scene.addChild(runView.container);
@@ -170,6 +173,7 @@ const pauseMenu = new PauseMenu(
   {
     onResume: () => closePauseMenu(),
     onRestart: () => location.reload(),
+    onMeta: () => metaScreen.open(),
     onQuit: () => {
       location.href = location.pathname; // strip ?seed — back to shift start
     },
@@ -330,9 +334,13 @@ run.on((e) => {
   if (e.phase === 'won' || e.phase === 'lost') {
     // persist the campaign: salvage refines on a win, shift advances
     if (e.phase === 'won') {
+      meta.ledger.svRefined += Math.floor(run.dice.salvage * settings.economy.salvageRefineRate);
       run.dice.refineSalvage();
       meta.shift = SHIFT_NO + 1;
     }
+    meta.ledger.pdEarned += run.stats.palladiumEarned;
+    meta.ledger.pdSpent += run.stats.palladiumSpent;
+    meta.ledger.svEarned += run.dice.stats.salvageEarned;
     meta.palladium = run.palladium;
     saveMeta(meta);
     const endCard = showTitleCard(
@@ -490,6 +498,9 @@ window.addEventListener('keydown', (event) => {
       itemModal.close(null); // toggle: s opens, s closes
     else openStash();
   }
+  if (event.key === 'g' || event.key === 'G') {
+    metaScreen.toggle(); // attribute grid + CSC armory + ledger
+  }
   if (event.key === 'n' && run.phase === 'won') {
     // next shift: meta already saved with the advance — boot resumes there
     location.href = location.pathname;
@@ -504,6 +515,8 @@ window.addEventListener('keydown', (event) => {
       pendingItem = null;
     } else if (pauseMenu.isOpen) {
       closePauseMenu();
+    } else if (metaScreen.isOpen) {
+      metaScreen.close();
     } else if (towerPanel.isOpen) {
       towerPanel.close();
     } else if (selected) {

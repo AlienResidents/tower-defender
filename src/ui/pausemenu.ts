@@ -15,6 +15,7 @@ import { settings } from '../settings';
 export interface PauseMenuActions {
   onResume: () => void;
   onRestart: () => void;
+  onMeta: () => void;
   onQuit: () => void;
 }
 
@@ -161,11 +162,15 @@ export class PauseMenu {
     this.#renderVolume();
 
     const restart = menuButton('RESTART LEVEL', 0xffa63d, this.#actions.onRestart);
-    restart.container.position.set(x, y + 66);
+    restart.container.position.set(x, y + 50);
     this.container.addChild(restart.container);
 
+    const meta = menuButton('META [g]', 0x9df5ff, this.#actions.onMeta);
+    meta.container.position.set(x, y + 95);
+    this.container.addChild(meta.container);
+
     const quit = menuButton('QUIT', 0xff4455, this.#actions.onQuit);
-    quit.container.position.set(x, y + 120);
+    quit.container.position.set(x, y + 140);
     this.container.addChild(quit.container);
   }
 

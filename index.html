@@ -68,6 +68,137 @@
         box-shadow: 0 0 12px #00e5ff;
         cursor: grab;
       }
+      /* --- meta screen ([g]) --- */
+      .metascreen {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        background: rgba(0, 0, 0, 0.72);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Courier New', monospace;
+      }
+      .metapanel {
+        width: 760px;
+        max-height: 84vh;
+        overflow-y: auto;
+        background: #05070f;
+        border: 2px solid #3ec6d8;
+        border-radius: 8px;
+        padding: 16px 20px;
+        color: #9df5ff;
+      }
+      .metahead {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .metatitle {
+        letter-spacing: 4px;
+        color: #e8f6ff;
+      }
+      .metabal {
+        color: #ffa63d;
+      }
+      .metaclose {
+        background: none;
+        border: 1px solid #3ec6d8;
+        color: #9df5ff;
+        cursor: pointer;
+      }
+      .metatabs {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      .metatabs button,
+      .attrbuy,
+      .attrrespec,
+      .storex button {
+        background: #0b1020;
+        border: 1px solid #1b2a4a;
+        color: #9df5ff;
+        font-family: inherit;
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .metatabs button.active {
+        border-color: #00e5ff;
+        color: #fff;
+      }
+      .attrrow {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 7px 0;
+        border-bottom: 1px solid #101a30;
+      }
+      .attrname {
+        width: 120px;
+        color: #e8f6ff;
+        font-size: 12px;
+      }
+      .attrcell {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex: 1;
+      }
+      .attrtrack {
+        color: #5b7a94;
+        font-size: 10px;
+        width: 62px;
+      }
+      .pips {
+        letter-spacing: 2px;
+        width: 64px;
+      }
+      .pip {
+        color: #1b2a4a;
+      }
+      .pip.on {
+        color: #00e5ff;
+      }
+      .attrmax {
+        color: #66ff99;
+        font-size: 11px;
+      }
+      .attrrespec {
+        border-color: #ffa63d;
+        color: #ffa63d;
+      }
+      .storex {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0 12px;
+        border-bottom: 1px solid #1b2a4a;
+        margin-bottom: 8px;
+      }
+      .storerow {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 0;
+        border-bottom: 1px solid #101a30;
+        font-size: 12px;
+      }
+      .metafoot {
+        margin-top: 12px;
+        padding-top: 8px;
+        border-top: 1px solid #1b2a4a;
+        color: #5b7a94;
+        font-size: 11px;
+      }
+      .metabody .hint {
+        color: #5b7a94;
+        font-size: 11px;
+        margin-top: 8px;
+      }
     </style>
   </head>
   <body>

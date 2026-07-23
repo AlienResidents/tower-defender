@@ -50,4 +50,19 @@ describe('meta persistence (schema v1)', () => {
     clearMeta();
     expect(loadMeta().palladium).toBe(settings.economy.startingPalladium);
   });
+
+  it('migrates v1 saves to v2 with empty grid/credits/ledger', () => {
+    localStorage.setItem(
+      'phosphor.meta.v1',
+      JSON.stringify({ version: 1, palladium: 2950, shift: 3, stash: ['amp'] }),
+    );
+    const meta = loadMeta();
+    expect(meta.version).toBe(2);
+    expect(meta.palladium).toBe(2950);
+    expect(meta.shift).toBe(3);
+    expect(meta.stash).toEqual(['amp']);
+    expect(meta.credits).toBe(0);
+    expect(meta.grid).toEqual({});
+    expect(meta.ledger.pdEarned).toBe(0);
+  });
 });

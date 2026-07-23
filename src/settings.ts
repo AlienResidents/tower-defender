@@ -62,6 +62,16 @@ export const settings = {
     volumeAuditionDelaySeconds: 0.4,
   },
 
+  /** CSC armory — credit exchange + item prices. */
+  store: {
+    /** Palladium cost of one credit pack. */
+    creditPackCost: 100,
+    /** Credits per pack. */
+    creditPackSize: 10,
+    /** Credits per point of item power. */
+    itemCreditPerPower: 3,
+  },
+
   audio: {
     /** Bus ceiling — the volume slider scales within this. */
     masterLevel: 0.9,

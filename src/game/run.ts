@@ -10,6 +10,7 @@ import { DiceSystem } from './dice';
 import { dropMultiplier } from './economy';
 import { WaveSpawner } from './spawner';
 import { settings } from '../settings';
+import { attrMods, emptyGrid, type AttrGrid } from '../data/attributes';
 
 /**
  * Run — the complete game state of one shift. Pure logic, zero rendering:
@@ -109,6 +110,8 @@ export class Run {
   /** The dice economy — tray, purchases, recharges (spec §8). */
   readonly dice: DiceSystem;
 
+  #attrGrid: AttrGrid = emptyGrid();
+
   constructor(path: Path, rng: Rng, opts?: { startingPalladium?: number }) {
     this.#path = path;
     this.#rng = rng;
@@ -164,10 +167,20 @@ export class Run {
       mods: { ...ZERO_MODS },
       items: [],
     };
+    // attribute grid bonuses stack in at placement (same unit as item mods)
+    const attr = attrMods(this.#attrGrid, def.id);
+    for (const [k, v] of Object.entries(attr)) {
+      tower.mods[k as keyof TowerMods] += v as number;
+    }
     this.towers.push(tower);
     this.stats.towersPlaced.set(def.id, (this.stats.towersPlaced.get(def.id) ?? 0) + 1);
     this.#logEvent(`tower placed: ${def.name} @ ${Math.round(x)},${Math.round(y)}`);
     return tower;
+  }
+
+  /** Attach the campaign attribute grid (applies to future placements). */
+  setAttrGrid(grid: AttrGrid): void {
+    this.#attrGrid = grid;
   }
 
   /** Socket an item onto a tower (max MAX_ITEMS_PER_TOWER). */
