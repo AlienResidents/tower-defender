@@ -16,7 +16,7 @@ export class BuildBar {
   #status: Text;
 
   constructor(width: number, y: number) {
-    const bar = new Graphics().rect(0, y, width, 44).fill({ color: 0x05070f, alpha: 0.85 });
+    const bar = new Graphics().rect(0, y, width, 44).fill({ color: 0x05070f, alpha: 1 });
     this.container.addChild(bar);
 
     let x = 16;

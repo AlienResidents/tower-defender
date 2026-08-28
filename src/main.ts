@@ -63,6 +63,14 @@ const DESIGN_H = 1080;
 const scene = new Container();
 app.stage.addChild(scene);
 
+// Letterbox bars — the scene's glow filters and negative-y rain particles
+// render past the design rect into the letterbox bands; opaque bars on top
+// keep the bands clean at non-16:9 aspects.
+const letterbox = new Graphics();
+letterbox.zIndex = 1000; // above every scene layer, below DOM overlays
+app.stage.sortableChildren = true;
+app.stage.addChild(letterbox);
+
 function fitScene(): void {
   const scale = Math.min(app.screen.width / DESIGN_W, app.screen.height / DESIGN_H);
   scene.scale.set(scale);
@@ -70,6 +78,14 @@ function fitScene(): void {
     (app.screen.width - DESIGN_W * scale) / 2,
     (app.screen.height - DESIGN_H * scale) / 2,
   );
+  const w = app.screen.width;
+  const h = app.screen.height;
+  letterbox.clear();
+  if (scene.position.y > 0)
+    letterbox.rect(0, 0, w, scene.position.y).rect(0, h - scene.position.y, w, scene.position.y);
+  if (scene.position.x > 0)
+    letterbox.rect(0, 0, scene.position.x, h).rect(w - scene.position.x, 0, scene.position.x, h);
+  letterbox.fill({ color: PALETTE.night });
   const overlay = document.querySelector<HTMLCanvasElement>('#webgpu-rain');
   if (overlay) {
     overlay.style.left = `${scene.position.x}px`;
