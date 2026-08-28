@@ -11,6 +11,13 @@ import { ITEMS } from '../data/items';
 import { TOWERS } from '../data/towers';
 import type { MetaState } from '../game/meta';
 import { saveMeta } from '../game/meta';
+import {
+  createProfile,
+  deleteProfile,
+  getActiveProfile,
+  listProfiles,
+  switchProfile,
+} from '../game/profiles';
 import type { Run } from '../game/run';
 import { settings } from '../settings';
 
@@ -37,7 +44,7 @@ function el(tag: string, className: string, text?: string): HTMLElement {
 export class MetaScreen {
   #deps: MetaScreenDeps;
   #overlay: HTMLDivElement | null = null;
-  #tab: 'grid' | 'armory' = 'grid';
+  #tab: 'grid' | 'armory' | 'profiles' = 'grid';
 
   constructor(deps: MetaScreenDeps) {
     this.#deps = deps;
@@ -76,7 +83,7 @@ export class MetaScreen {
 
     // header
     const head = el('div', 'metahead');
-    head.appendChild(el('span', 'metatitle', 'PHOSPHOR :: META'));
+    head.appendChild(el('span', 'metatitle', `PHOSPHOR :: META — ${getActiveProfile().name}`));
     head.appendChild(el('span', 'metabal', `Pd ${Math.floor(run.palladium)} · ${meta.credits} cr`));
     const close = el('button', 'metaclose', '✕');
     close.onclick = () => this.close();
@@ -88,6 +95,7 @@ export class MetaScreen {
     for (const [id, label] of [
       ['grid', 'ATTRIBUTE GRID'],
       ['armory', 'CSC ARMORY'],
+      ['profiles', 'PROFILES'],
     ] as const) {
       const b = el('button', this.#tab === id ? 'active' : '', label);
       b.onclick = () => {
@@ -101,7 +109,8 @@ export class MetaScreen {
     const body = el('div', 'metabody');
     panel.appendChild(body);
     if (this.#tab === 'grid') this.#renderGrid(body);
-    else this.#renderArmory(body);
+    else if (this.#tab === 'armory') this.#renderArmory(body);
+    else this.#renderProfiles(body);
 
     // ledger footer
     const led = meta.ledger;
@@ -211,5 +220,53 @@ export class MetaScreen {
       body.appendChild(rowEl);
     }
     body.appendChild(el('div', 'hint', 'purchased items land in the stash — open with [s]'));
+  }
+  #renderProfiles(body: HTMLElement): void {
+    const active = getActiveProfile();
+    for (const profile of listProfiles()) {
+      const rowEl = el('div', 'profilerow');
+      const isActive = profile.id === active.id;
+      rowEl.appendChild(
+        el(
+          'span',
+          'profilename',
+          `${profile.name}${isActive ? ' ● ACTIVE' : ''} — last ${new Date(profile.lastPlayedAt).toLocaleString('en-AU', { hour12: false })}`,
+        ),
+      );
+      if (!isActive) {
+        const use = el('button', 'attrbuy', 'SWITCH');
+        use.onclick = () => {
+          switchProfile(profile.id);
+          location.reload(); // boot re-reads meta for the new active profile
+        };
+        rowEl.appendChild(use);
+      }
+      const del = el('button', 'attrrespec', 'DELETE');
+      del.onclick = () => {
+        deleteProfile(profile.id);
+        if (isActive) location.reload(); // active changed — re-boot
+        else this.#render();
+      };
+      rowEl.appendChild(del);
+      body.appendChild(rowEl);
+    }
+
+    const form = el('div', 'profileform');
+    const input = document.createElement('input');
+    input.className = 'profileinput';
+    input.placeholder = 'NEW OPERATOR NAME';
+    input.maxLength = 24;
+    const create = el('button', 'attrbuy', 'CREATE + SWITCH');
+    create.onclick = () => {
+      const profile = createProfile(input.value);
+      switchProfile(profile.id);
+      location.reload();
+    };
+    form.appendChild(input);
+    form.appendChild(create);
+    body.appendChild(form);
+    body.appendChild(
+      el('div', 'hint', 'saves are per-operator, stored in this browser · switching reloads the shift'),
+    );
   }
 }

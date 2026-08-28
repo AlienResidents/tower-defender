@@ -1,5 +1,6 @@
 import { settings } from '../settings';
 import { emptyGrid, type AttrGrid } from '../data/attributes';
+import { activeMetaKey } from './profiles';
 
 /**
  * Campaign meta state — persists across shifts via localStorage.
@@ -7,6 +8,10 @@ import { emptyGrid, type AttrGrid } from '../data/attributes';
  * v2 adds: credits (store currency), attribute grid, campaign ledger.
  * v1 saves migrate on load. Palladium is the meta currency: it carries
  * between shifts. Picked items live in the stash until socketed.
+ *
+ * Storage is per-operator-profile: reads/writes resolve the active
+ * profile's key through profiles.activeMetaKey() — the seam where a
+ * server backend can later replace localStorage without touching callers.
  */
 
 export interface MetaState {
@@ -28,8 +33,6 @@ export interface MetaState {
     svRefined: number;
   };
 }
-
-const KEY = 'phosphor.meta.v1'; // key name kept; version field governs schema
 
 export function freshMeta(): MetaState {
   return {
@@ -78,7 +81,7 @@ function migrate(parsed: Partial<MetaState> | Partial<MetaV1>): MetaState | null
 
 export function loadMeta(): MetaState {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(activeMetaKey());
     if (!raw) return freshMeta();
     const parsed = JSON.parse(raw) as Partial<MetaState>;
     const migrated = migrate(parsed);
@@ -91,7 +94,7 @@ export function loadMeta(): MetaState {
 
 export function saveMeta(meta: MetaState): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(meta));
+    localStorage.setItem(activeMetaKey(), JSON.stringify(meta));
   } catch {
     // storage unavailable — session-only progress
   }
@@ -100,7 +103,7 @@ export function saveMeta(meta: MetaState): void {
 /** Dev/testing escape hatch. */
 export function clearMeta(): void {
   try {
-    localStorage.removeItem(KEY);
+    localStorage.removeItem(activeMetaKey());
   } catch {
     // ignore
   }

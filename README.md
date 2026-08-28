@@ -2,7 +2,7 @@
 
 A neon-drenched sci-fi tower defense game — Blade Runner's rain-slicked megacity crossed with Cowboy Bebop's cool. Original art, original maps, mechanical enemies (robots, mechs, drones), futuristic weapons.
 
-**Status:** M1 beauty spike look-locked (tags `m0`, `m1`). Next: M2 core loop greybox (issue #3).
+**Status:** POC complete (tags `m0`–`m4`): 15-wave shift, dice economy, meta shell. Multi-operator local profiles (create/switch/delete in the meta screen's PROFILES tab); per-profile saves in localStorage, legacy single-save auto-adopted. Next: post-POC re-evaluation + full-game systems (issue #8).
 
 ## Vision
 
@@ -20,5 +20,5 @@ A neon-drenched sci-fi tower defense game — Blade Runner's rain-slicked megaci
 
 - `docs/` — design spec, implementation plans
 - `okf/` — knowledge bundle index
-- `src/` — POC source (coming soon)
+- `src/` — game source (PixiJS v8 / WebGL2)
 - `assets/` — gitignored; populated by sync from Google storage
