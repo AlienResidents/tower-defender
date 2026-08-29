@@ -99,8 +99,12 @@ export function computeCityLayout(rng: Rng, width: number, height: number): City
   ]);
 
   // Buildings on a jittered grid, rejection-sampled away from the street.
+  // The grid reserves the HUD strip (top) and build-bar strip (bottom) so
+  // buildings, roof extrusion, and glow never render behind the chrome.
   const buildings: BuildingSpec[] = [];
   const clearance = streetWidth * 0.5 + 14;
+  const topMargin = 48; // HUD line height + breathing room
+  const bottomMargin = 44; // build bar
   const cols = Math.max(3, Math.floor(width / 210));
   const rows = Math.max(2, Math.floor(height / 190));
   for (let row = 0; row < rows; row++) {
@@ -110,9 +114,9 @@ export function computeCityLayout(rng: Rng, width: number, height: number): City
       const h = rng.range(60, 130);
       const depth = rng.range(16, 42);
       const cellW = width / cols;
-      const cellH = height / rows;
+      const cellH = (height - topMargin - bottomMargin) / rows;
       const x = col * cellW + rng.range(4, Math.max(8, cellW - w - 8));
-      const y = row * cellH + rng.range(4, Math.max(8, cellH - h - 8)) + depth;
+      const y = topMargin + row * cellH + rng.range(4, Math.max(8, cellH - h - 8)) + depth;
       const cx = x + w / 2;
       const cy = y + h / 2;
       if (path.closestPoint({ x: cx, y: cy }).distance < clearance + Math.max(w, h) * 0.5) {
